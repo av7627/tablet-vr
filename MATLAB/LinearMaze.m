@@ -38,8 +38,9 @@
 % 2018-05-25. Leonardo Molina.
 classdef LinearMaze < handle
     properties
+        
         % intertrialBehavior - Whether to permit behavior during an intertrial.
-        intertrialBehavior = false;
+        intertrialBehavior = true;
         
         % intertrial - Duration (s) of an intertrial when last node is reached.
         intertrialDuration = 1;
@@ -57,14 +58,24 @@ classdef LinearMaze < handle
         rewardDuration = 0.040;
         
         % rewardTone - Frequency and duration of the tone during a reward.
+
         rewardTone = [2000, 0.5];
         
+
+
+        
+
         % tapeTrigger - Whether to initiate a new trial when photosensor
         % detects a tape strip in the belt.
         tapeTrigger = false;
         
         % treadmill - Arduino controlled apparatus.
         treadmill
+        
+%         comPortName = 'com5';
+%         com = 'com'
+%         so = [com,comPortName];
+%inputs = ['com', 'COM4', 'monitors', {'127.0.0.1', 0, '192.168.1.100', 90}]
     end
     
     properties (SetAccess = private)
@@ -72,16 +83,23 @@ classdef LinearMaze < handle
         filename
         
         % scene - Name of an existing scene.
-        scene = 'Tunnel';
+        scene = 'linearMaze';
 		
         % vertices - Vertices of the maze (x1, y1, x2, y2, ... in cm).
         vertices = [0, -100, ...
-                    0,    0, ...
-                    0, 1000, ...
-                    0, -Inf];
+                    0,    -42, ...
+                    -35, -10] %go left at first
         
         % resetNode - When resetNode is reached, re-start.
-        resetNode = 2;
+        resetNode = 3;
+        
+        %inputs = ['com', 'COM4', 'monitors', {'127.0.0.1', 0, '192.168.1.100', 90}]
+        
+        yRotation = 90; %for rotating the camera for steering
+        x_yRotation = 0;
+        y_yRotation = 1;
+        
+        vectorPosition = [0, -100, 0]
     end
     
     properties (Dependent)
@@ -90,9 +108,13 @@ classdef LinearMaze < handle
         
         % speed - Forward speed in open-loop.
         speed
+        
+        
     end
     
     properties (Access = private)
+        
+        
         % addresses - IP addresses listed under monitors.
         addresses
         
@@ -111,7 +133,7 @@ classdef LinearMaze < handle
         % figureHandle - UI handle to control figure.
         figureHandle
         
-        mGain = 1;
+        mGain = 5;
         
         mSpeed = 0;
         
@@ -144,6 +166,8 @@ classdef LinearMaze < handle
         
         % update - Last string logged during an update operation.
         update = ''
+        
+        
     end
     
     properties (Constant)
@@ -152,11 +176,15 @@ classdef LinearMaze < handle
         
         % programVersion - Version of this class.
         programVersion = '20180525';
+        
+        hardware =2;%0:no hardware, 1:runningWheel(noSteering), 2:steeringOnly, 3: all hardware on
+        
+        
+        
     end
     
     methods
         function obj = LinearMaze(varargin)
-            % LinearMaze()
             %   Controller for a liner-maze.
             % LinearMaze('com', comPortName, ...)
             %   Provide the serial port name of the treadmill (rotary encoder, pinch valve,
@@ -164,15 +192,32 @@ classdef LinearMaze < handle
             %   running a matching firmware).
             % LinearMaze('monitors', {ip1, offset1, ip2, offset2, ...}, ...)
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
+            %commandwindow
+            %varargin
             
+            %obj.hardware = hardware
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
             k = find(strcmpi(keys, 'com'), 1);
-            if isempty(k)
+%             if isempty(k)
+%                 com = [];
+%             else
+                %com = 'com5'; %values{k};
+%             end
+           
+            if obj.hardware == 0 %no hardware
                 com = [];
-            else
-                com = values{k};
+                
+            elseif obj.hardware == 1 || obj.hardware == 2 || obj.hardware == 3 %some or all hardware on
+                com = 'com5';
+                
             end
+            
+            if obj.hardware == 0 %if no hardware
+                obj.mSpeed = 20;
+            end 
+                
+            
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
                 monitors = {'127.0.0.1', 0};
@@ -210,7 +255,7 @@ classdef LinearMaze < handle
                 obj.treadmill = TreadmillInterface();
                 obj.print('treadmill-version,%s', TreadmillInterface.programVersion);
             else
-                obj.treadmill = ArduinoTreadmill(com);
+                obj.treadmill = ArduinoTreadmill('com5');
                 obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
             end
             obj.treadmill.register('Frame', @obj.onFrame);
@@ -239,11 +284,19 @@ classdef LinearMaze < handle
             
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
+            
+            if obj.hardware == 2
+                obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);
+            end
+            
+                
         end
         
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
+            
+            duration = 0; %hardcode blank to be zero
             
             Objects.delete(obj.blankId);
             if duration == 0
@@ -368,6 +421,20 @@ classdef LinearMaze < handle
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
             
+            %if movie mode, and random then switch the final node randomly
+            %left or right
+            rand = randi(0:1);
+            if obj.hardware == 0 || 1 %if not using steering 
+                if rand == 0 %go left
+                    obj.nodes.vertices(end-1) = -35;
+                elseif rand == 1 %go right
+                    obj.nodes.vertices(end-1) = 35;
+                end
+            end
+            
+            if obj.hardware ~= 0
+                obj.yRotation = 90; %reset rotation on new trial
+            end
             obj.treadmill.reward(obj.rewardDuration);
             Tools.tone(obj.rewardTone(1), obj.rewardTone(2));
             
@@ -468,9 +535,54 @@ classdef LinearMaze < handle
             % The rotary encoder changed, update behavior if enabled
             % Create an entry in the log file otherwise.
             
-            if obj.enabled && obj.speed == 0 && ~obj.nodes.rotating
+            %if obj.enabled && obj.speed == 0 && ~obj.nodes.rotating
                 % Rotary encoder changes position unless open-loop speed is different than 0.
+                %obj.nodes.push(step * obj.gain);
+            %end
+            
+            if obj.hardware == 1%runningWheel
                 obj.nodes.push(step * obj.gain);
+%                 disp(step)
+%                 disp(obj.gain)
+            elseif obj.hardware == 2%steeringWheel
+                
+                obj.yRotation = obj.yRotation - step * obj.gain %the yRotation is updated each time this function is called
+                
+                if obj.yRotation >= 180
+                    obj.yRotation = 180;
+                elseif obj.yRotation <= 0
+                    obj.yRotation = 0;
+                end
+                
+                obj.x_yRotation = cosd(obj.yRotation)
+                obj.y_yRotation = sind(obj.yRotation)
+          
+%                 obj.sender.send(sprintf('position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2), ...
+%                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
+                
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses)
+            end
+                
+                
+        end
+        
+        function steeringPush(obj)
+            
+            if obj.hardware == 2%obj.enabled %if game not 'stop' or 'pause'
+                
+                obj.sender.send(sprintf(...
+                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2)), ...
+                obj.addresses);
+            
+                sprintf(...
+                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2))
+            
+                obj.vectorPosition(1,1) = obj.vectorPosition(1,1) - obj.x_yRotation
+                obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.y_yRotation
+                
+                if obj.vectorPosition(1,2) > obj.vertices(end) %get to reset node: then reset camera position
+                    obj.vectorPosition(1:2) = obj.vertices(1:2)
+                end
             end
         end
         
@@ -478,10 +590,16 @@ classdef LinearMaze < handle
             % LinearMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
             
-            if obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
-                % Open-loop updates position when open-loop speed is different 0.
-                obj.nodes.push(obj.speed / obj.nodes.fps);
-            end
+            
+                
+                if obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
+                    % Open-loop updates position when open-loop speed is different 0.
+                    obj.nodes.push(obj.speed / obj.nodes.fps);
+                else
+                    steeringPush(obj)
+                end
+                    
+            
             
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
@@ -489,8 +607,12 @@ classdef LinearMaze < handle
                     obj.update = str;
                     obj.log(str);
                 end
+                
             end
+            
         end
+        
+        
     end
     
     methods (Static)
