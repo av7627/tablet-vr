@@ -177,8 +177,7 @@ classdef LinearMaze < handle
         % programVersion - Version of this class.
         programVersion = '20180525';
         
-        hardware =2;%0:no hardware, 1:runningWheel(noSteering), 2:steeringOnly, 3: all hardware on
-        
+        hardware =2;%0:no hardware,  2:steeringOnly
         
         
     end
@@ -208,7 +207,7 @@ classdef LinearMaze < handle
             if obj.hardware == 0 %no hardware
                 com = [];
                 
-            elseif obj.hardware == 1 || obj.hardware == 2 || obj.hardware == 3 %some or all hardware on
+            elseif obj.hardware == 2%hardware on
                 com = 'com5';
                 
             end
@@ -285,9 +284,9 @@ classdef LinearMaze < handle
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
-            if obj.hardware == 2
-                obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);
-            end
+%             if obj.hardware == 2 (I put this function in onUpdate
+%                 obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);%if hardware then use steeringPush (maybe combine this with onUpdate)
+%             end
             
                 
         end
@@ -378,7 +377,16 @@ classdef LinearMaze < handle
             % Reset trial, position, rotation, frame count and encoder steps.
             
             obj.trial = 1;
-            obj.nodes.vertices = obj.vertices;
+            if obj.hardware == 0
+                obj.nodes.vertices = obj.vertices;
+            elseif obj.hardware == 2
+                obj.yRotation = 90; %reset rotation on new trial
+                obj.y_yRotation = 1;
+                obj.x_yRotation = 0;
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                obj.vectorPosition(1:2) = obj.vertices(1:2);
+            end
+            
             % Frame counts and steps are reset to zero.
             obj.treadmill.frame = 0;
             obj.treadmill.step = 0;
@@ -409,9 +417,10 @@ classdef LinearMaze < handle
             % Send low pulse to trigger-out and disable behavior.
             
             % Show blank and disable external devices and behavior.
+            obj.enabled = false;
             obj.treadmill.trigger = false;
             obj.sender.send('enable,Blank,1;', obj.addresses);
-            obj.enabled = false;
+            
             obj.print('note,stop');
         end
     end
@@ -423,8 +432,9 @@ classdef LinearMaze < handle
             
             %if movie mode, and random then switch the final node randomly
             %left or right
-            rand = randi(0:1);
-            if obj.hardware == 0 || 1 %if not using steering 
+            
+            if obj.hardware == 0  %if not using steering 
+                rand = randi(0:1);
                 if rand == 0 %go left
                     obj.nodes.vertices(end-1) = -35;
                 elseif rand == 1 %go right
@@ -432,9 +442,13 @@ classdef LinearMaze < handle
                 end
             end
             
-            if obj.hardware ~= 0
+            if obj.hardware == 2
                 obj.yRotation = 90; %reset rotation on new trial
+                obj.y_yRotation = 1;
+                obj.x_yRotation = 0;
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
             end
+            
             obj.treadmill.reward(obj.rewardDuration);
             Tools.tone(obj.rewardTone(1), obj.rewardTone(2));
             
@@ -540,13 +554,10 @@ classdef LinearMaze < handle
                 %obj.nodes.push(step * obj.gain);
             %end
             
-            if obj.hardware == 1%runningWheel
-                obj.nodes.push(step * obj.gain);
-%                 disp(step)
-%                 disp(obj.gain)
-            elseif obj.hardware == 2%steeringWheel
-                
-                obj.yRotation = obj.yRotation - step * obj.gain %the yRotation is updated each time this function is called
+            
+            %steeringWheel
+               disp('o')
+                obj.yRotation = obj.yRotation - step * obj.gain; %the yRotation is updated each time this function is called
                 
                 if obj.yRotation >= 180
                     obj.yRotation = 180;
@@ -554,37 +565,35 @@ classdef LinearMaze < handle
                     obj.yRotation = 0;
                 end
                 
-                obj.x_yRotation = cosd(obj.yRotation)
-                obj.y_yRotation = sind(obj.yRotation)
+                obj.x_yRotation = cosd(obj.yRotation);
+                obj.y_yRotation = sind(obj.yRotation);
           
 %                 obj.sender.send(sprintf('position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2), ...
 %                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
                 
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses)
-            end
-                
-                
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
         end
+                
+                
+       
         
-        function steeringPush(obj)
-            
-            if obj.hardware == 2%obj.enabled %if game not 'stop' or 'pause'
-                
-                obj.sender.send(sprintf(...
-                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2)), ...
-                obj.addresses);
-            
-                sprintf(...
-                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2))
-            
-                obj.vectorPosition(1,1) = obj.vectorPosition(1,1) - obj.x_yRotation
-                obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.y_yRotation
-                
-                if obj.vectorPosition(1,2) > obj.vertices(end) %get to reset node: then reset camera position
-                    obj.vectorPosition(1:2) = obj.vertices(1:2)
-                end
-            end
-        end
+%         function steeringPush(obj) (I put this function in onUpdate
+%             
+%             if obj.enabled %if game not 'stop' or 'pause'
+%                 
+%                 obj.sender.send(sprintf(...
+%                 'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2)), ...
+%                 obj.addresses);
+%             
+%                 obj.vectorPosition(1,1) = obj.vectorPosition(1,1) - obj.x_yRotation;
+%                 obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.y_yRotation;
+%                 
+%                 if obj.vectorPosition(1,2) > obj.vertices(end) %get to reset node: then reset camera position
+%                     obj.vectorPosition(1:2) = obj.vertices(1:2); 
+%                     obj.newTrial();
+%                 end
+%             end
+%         end
         
         function onUpdate(obj)
             % LinearMaze.onUpdate()
@@ -595,12 +604,22 @@ classdef LinearMaze < handle
                 if obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
-                else
-                    steeringPush(obj)
+                elseif obj.hardware == 2 && obj.enabled
+                     
+                
+                    obj.sender.send(sprintf(...
+                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2)), ...
+                    obj.addresses);
+            
+                    obj.vectorPosition(1,1) = obj.vectorPosition(1,1) - obj.x_yRotation;
+                    obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.y_yRotation;
+                
+                    if obj.vectorPosition(1,2) > obj.vertices(end) %get to reset node: then reset camera position
+                        obj.vectorPosition(1:2) = obj.vertices(1:2); 
+                        obj.newTrial();
+                    end
                 end
                     
-            
-            
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
                 if ~strcmp(str, obj.update)
