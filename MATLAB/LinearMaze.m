@@ -195,6 +195,8 @@ classdef LinearMaze < handle
             %varargin
             
             %obj.hardware = hardware
+            
+            
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
             k = find(strcmpi(keys, 'com'), 1);
