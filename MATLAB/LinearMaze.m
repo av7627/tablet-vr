@@ -442,9 +442,9 @@ classdef LinearMaze < handle
                 elseif rand == 1 %go right
                     obj.nodes.vertices(end-1) = 35;
                 end
-            end
             
-            if obj.hardware == 2
+            
+            elseif obj.hardware == 2
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.y_yRotation = 1;
                 obj.x_yRotation = 0;
@@ -558,7 +558,8 @@ classdef LinearMaze < handle
             
             
             %steeringWheel
-               disp('o')
+            if obj.enabled
+               %disp('o')
                 obj.yRotation = obj.yRotation - step * obj.gain; %the yRotation is updated each time this function is called
                 
                 if obj.yRotation >= 180
@@ -574,6 +575,7 @@ classdef LinearMaze < handle
 %                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
                 
                 obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+            end
         end
                 
                 
