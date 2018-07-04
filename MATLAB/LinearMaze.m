@@ -177,7 +177,7 @@ classdef LinearMaze < handle
         % programVersion - Version of this class.
         programVersion = '20180525';
         
-        hardware =2;%0:no hardware,  2:steeringOnly
+        hardware =0;%0:no hardware,  2:steeringOnly
         
         
     end
@@ -275,8 +275,10 @@ classdef LinearMaze < handle
             h(1) = uicontrol('Style', 'PushButton', 'String', 'Stop',  'Callback', @(~, ~)obj.stop());
             h(2) = uicontrol('Style', 'PushButton', 'String', 'Start', 'Callback', @(~, ~)obj.start());
             h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
-            h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text', 'Callback', @(~, ~)obj.onLogButton());
+            %h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text', 'Callback', @(~, ~)obj.onLogButton());
+            h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
             h(5) = uicontrol('Style', 'Edit');
+            
             p = get(h(1), 'Position');
             set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
             align(h, 'Left', 'Fixed', 0.5 * p(1));
@@ -422,6 +424,8 @@ classdef LinearMaze < handle
             obj.enabled = false;
             obj.treadmill.trigger = false;
             obj.sender.send('enable,Blank,1;', obj.addresses);
+            %obj.sender.send('enable,Mouse,1;', obj.addresses); %this is how
+            %to turn off and on (0 or 1 respectively) objects in Main 
             
             obj.print('note,stop');
         end
@@ -517,6 +521,25 @@ classdef LinearMaze < handle
                 obj.print('note,%s', obj.textBox.String);
                 obj.textBox.String = '';
             end
+        end
+        
+        function chooseBranch(obj)
+            % LinearMaze.chooseBranch()
+            % choose the branch.
+            if ~isempty(obj.textBox.String) %if user typed in text box
+                %disp(obj.textBox.String)
+                
+                if obj.textBox.String == '1' %if number corresponds to branch number, display that branch and deactivitate other branch
+                    obj.sender.send('enable,Mouse,0;', obj.addresses);
+                elseif obj.textBox.String == '2'
+                    obj.sender.send('enable,Blank,0;', obj.addresses);
+                elseif obj.textBox.String == '3'
+                    obj.sender.send('enable,Blank,0;', obj.addresses);
+                end
+                
+                obj.textBox.String = '';%clear textbox
+            end
+            
         end
         
         function onTape(obj, forward)
