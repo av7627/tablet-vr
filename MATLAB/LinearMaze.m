@@ -40,10 +40,10 @@ classdef LinearMaze < handle
     properties
         
         % intertrialBehavior - Whether to permit behavior during an intertrial.
-        intertrialBehavior = true;
+        intertrialBehavior = false;
         
         % intertrial - Duration (s) of an intertrial when last node is reached.
-        intertrialDuration = 1;
+        intertrialDuration = 0;
         
         % logOnChange - Create a log entry with every change in position or rotation.
         logOnChange = false;
@@ -85,21 +85,24 @@ classdef LinearMaze < handle
         % scene - Name of an existing scene.
         scene = 'linearMaze';
 		
-        % vertices - Vertices of the maze (x1, y1, x2, y2, ... in cm).
-        vertices = [0, -100, ...
-                    0,    -42, ...
-                    -35, -10] %go left at first
+        % vertices - Vertices of the maze (x1, y1; x2, y2 ... in cm).
+        %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
+         vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];
+        
+        vectorPosition = [0, -100];%starting position to be updated if hardware on
+        %branch number - tells what branch to move camera  to
+        branchNum = 1
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
         
         %inputs = ['com', 'COM4', 'monitors', {'127.0.0.1', 0, '192.168.1.100', 90}]
         
-        yRotation = 90; %for rotating the camera for steering
+        yRotation = 0; %for rotating the camera for steering
         x_yRotation = 0;
         y_yRotation = 1;
         
-        vectorPosition = [0, -100, 0]
+        
     end
     
     properties (Dependent)
@@ -215,7 +218,7 @@ classdef LinearMaze < handle
             end
             
             if obj.hardware == 0 %if no hardware
-                obj.mSpeed = 20;
+                obj.mSpeed = 40;
             end 
                 
             
@@ -268,7 +271,7 @@ classdef LinearMaze < handle
             obj.nodes.register('Change', @(position, distance, yaw, rotation)obj.onChange(position, distance, yaw));
             obj.nodes.register('Lap', @(lap)obj.onLap);
             obj.nodes.register('Node', @obj.onNode);
-            obj.nodes.vertices = obj.vertices;
+            obj.nodes.vertices = obj.vertices(obj.branchNum,:);
             
             % Release resources when the figure is closed.
             obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off', 'DeleteFcn', @(~, ~)obj.delete());
@@ -278,7 +281,10 @@ classdef LinearMaze < handle
             %h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text', 'Callback', @(~, ~)obj.onLogButton());
             h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
             h(5) = uicontrol('Style', 'Edit');
-            
+            h(6) = uicontrol('Style', 'slider','String', 'set Speed',...
+                             'Min',1,'Max',50,'Value',41,...
+                             'Callback', @obj.sliderSpeed);
+                         
             p = get(h(1), 'Position');
             set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
             align(h, 'Left', 'Fixed', 0.5 * p(1));
@@ -299,7 +305,7 @@ classdef LinearMaze < handle
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
             
-            duration = 0; %hardcode blank to be zero
+            %duration = 0; %hardcode blank to be zero
             
             Objects.delete(obj.blankId);
             if duration == 0
@@ -327,6 +333,14 @@ classdef LinearMaze < handle
         function speed = get.speed(obj)
             speed = obj.mSpeed;
         end
+        
+        function sliderSpeed(source)
+        val = 51 - source.Value;
+        % For R2014a and earlier:
+        %val = 51 - get(obj,'value')
+
+        %zlim(ax,[-val val]);
+    end
         
         function delete(obj)
             % LinearMaze.delete()
@@ -382,12 +396,12 @@ classdef LinearMaze < handle
             
             obj.trial = 1;
             if obj.hardware == 0
-                obj.nodes.vertices = obj.vertices;
+                obj.nodes.vertices = obj.vertices(obj.branchNum,:);
             elseif obj.hardware == 2
-                obj.yRotation = 90; %reset rotation on new trial
+                obj.yRotation = 0; %reset rotation on new trial
                 obj.y_yRotation = 1;
                 obj.x_yRotation = 0;
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation), obj.addresses);
                 obj.vectorPosition(1:2) = obj.vertices(1:2);
             end
             
@@ -441,14 +455,39 @@ classdef LinearMaze < handle
             
             if obj.hardware == 0  %if not using steering 
                 rand = randi(0:1);
-                if rand == 0 %go left
-                    obj.nodes.vertices(end-1) = -35;
-                elseif rand == 1 %go right
-                    obj.nodes.vertices(end-1) = 35;
+                obj.nodes.vertices = obj.vertices(obj.branchNum,:);
+                if obj.branchNum == 1
+                    
+                    
+                    
+                    if rand == 0 %go left
+                        obj.nodes.vertices(end-1) = -35;
+                    elseif rand == 1 %go right
+                       obj.nodes.vertices(end-1) = 35;
+                    end
+                elseif obj.branchNum == 2
+                    
+                    
+                    if rand == 0 %go left
+                        obj.nodes.vertices(end-1) = 240;
+                    elseif rand == 1 %go right
+                       obj.nodes.vertices(end-1) = 270;
+                    end
+                elseif obj.branchNum == 3
+                    
+                    
+                    if rand == 0 %go left
+                        obj.nodes.vertices(end-1) = 446;
+                    elseif rand == 1 %go right
+                       obj.nodes.vertices(end-1) = 488;
+                    end
                 end
+                    
             
             
             elseif obj.hardware == 2
+                
+                obj.vectorPosition = obj.vertices(obj.branchNum,1:2);
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.y_yRotation = 1;
                 obj.x_yRotation = 0;
@@ -526,16 +565,21 @@ classdef LinearMaze < handle
         function chooseBranch(obj)
             % LinearMaze.chooseBranch()
             % choose the branch.
-            if ~isempty(obj.textBox.String) %if user typed in text box
+            if ~isempty(obj.textBox.String) %if user typed in text box on button press do this
                 %disp(obj.textBox.String)
                 
-                if obj.textBox.String == '1' %if number corresponds to branch number, display that branch and deactivitate other branch
-                    obj.sender.send('enable,Mouse,0;', obj.addresses);
-                elseif obj.textBox.String == '2'
-                    obj.sender.send('enable,Blank,0;', obj.addresses);
-                elseif obj.textBox.String == '3'
-                    obj.sender.send('enable,Blank,0;', obj.addresses);
-                end
+                obj.branchNum = str2num(obj.textBox.String); %set current branch to the one selected
+                
+               
+                
+%                 if obj.textBox.String == '1' %if number corresponds to branch number, move camera, change vertices next trial
+%                     obj.branchNum = 1;
+%                 elseif obj.textBox.String == '2'
+%                     obj.branchNum = 2;
+%                 elseif obj.textBox.String == '3'
+%                     obj.branchNum = 3;
+%                 end
+
                 
                 obj.textBox.String = '';%clear textbox
             end
@@ -631,18 +675,18 @@ classdef LinearMaze < handle
                 if obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
-                elseif obj.hardware == 2 && obj.enabled
+                elseif obj.hardware == 2 && obj.enabled %hardware on, obj enabled
                      
                 
                     obj.sender.send(sprintf(...
-                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2)), ...
+                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                     obj.addresses);
             
-                    obj.vectorPosition(1,1) = obj.vectorPosition(1,1) - obj.x_yRotation;
-                    obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.y_yRotation;
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - obj.x_yRotation;
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + obj.y_yRotation;
                 
-                    if obj.vectorPosition(1,2) > obj.vertices(end) %get to reset node: then reset camera position
-                        obj.vectorPosition(1:2) = obj.vertices(1:2); 
+                    if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
+                        %obj.vectorPosition(1:2) = obj.vertices(1:2); 
                         obj.newTrial();
                     end
                 end
