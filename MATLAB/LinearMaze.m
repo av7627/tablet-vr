@@ -1,3 +1,17 @@
+%Notes: random button doesnt work
+%scale down steering speed
+
+
+
+
+
+
+
+
+
+
+
+
 % LinearMaze - Controller for a linear maze using custom behavioral apparatus.
 % 
 % Movement is initiated by a subject running on a treadmill. Multiple monitors
@@ -140,6 +154,17 @@ classdef LinearMaze < handle
         
         mSpeed = 0;
         
+        slider_Speed_h;
+        steeringPushfactor;
+        
+        choosebranch_h;
+        
+        tempMovieMode;
+        
+        movieDirection;
+        movieDirection_h;
+        
+        
         % nodes - Nodes object for controlling behavior.
         nodes
         
@@ -164,12 +189,17 @@ classdef LinearMaze < handle
         % textBox - Textbox GUI.
         textBox
         
+        
+        
         % trial - Trial number.
         trial = 1
         
         % update - Last string logged during an update operation.
         update = ''
         
+        hardware =0;%0:no hardware,  2:steeringOnly
+        
+        com
         
     end
     
@@ -180,7 +210,7 @@ classdef LinearMaze < handle
         % programVersion - Version of this class.
         programVersion = '20180525';
         
-        hardware =0;%0:no hardware,  2:steeringOnly
+        
         
         
     end
@@ -210,10 +240,10 @@ classdef LinearMaze < handle
 %             end
            
             if obj.hardware == 0 %no hardware
-                com = [];
+                obj.com = [];
                 
             elseif obj.hardware == 2%hardware on
-                com = 'com5';
+                obj.com = 'com5';
                 
             end
             
@@ -255,7 +285,7 @@ classdef LinearMaze < handle
             obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
             
             % Initialize treadmill controller.
-            if isempty(com)
+            if isempty(obj.com)
                 obj.treadmill = TreadmillInterface();
                 obj.print('treadmill-version,%s', TreadmillInterface.programVersion);
             else
@@ -278,17 +308,35 @@ classdef LinearMaze < handle
             h(1) = uicontrol('Style', 'PushButton', 'String', 'Stop',  'Callback', @(~, ~)obj.stop());
             h(2) = uicontrol('Style', 'PushButton', 'String', 'Start', 'Callback', @(~, ~)obj.start());
             h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
-            %h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text', 'Callback', @(~, ~)obj.onLogButton());
-            h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+            
+            h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text', 'Callback', @(~, ~)obj.onLogButton());
+            %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
             h(5) = uicontrol('Style', 'Edit');
-            h(6) = uicontrol('Style', 'slider','String', 'set Speed',...
-                             'Min',1,'Max',50,'Value',41,...
-                             'Callback', @obj.sliderSpeed);
-                         
+            
+            h(6) = uicontrol('Style', 'popup',...
+               'String', {'branch1', 'branch2','branch3'},...
+               'Callback', @(~,~)obj.chooseBranch()); 
+           
+            h(7) = uicontrol('Style', 'slider',...
+                             'Min',0,'Max',50,'Value',25,...
+                             'Callback', @(~,~)obj.sliderSpeed());
+            h(8) = uicontrol('Style', 'popup',...
+               'String', {'steering on', 'tempMovieMode'},...
+               'Callback', @(~,~)obj.tempMovie()); 
+       
+           h(9) = uicontrol('Style', 'popup',...
+               'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'}); 
+       
             p = get(h(1), 'Position');
             set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
             align(h, 'Left', 'Fixed', 0.5 * p(1));
+            
             obj.textBox = h(5);
+            obj.choosebranch_h = h(6);
+            obj.slider_Speed_h = h(7);
+            obj.tempMovieMode = h(8);
+            obj.movieDirection_h = h(9);
+            
             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
             
             obj.scheduler = Scheduler();
@@ -301,6 +349,7 @@ classdef LinearMaze < handle
                 
         end
         
+
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
@@ -326,7 +375,7 @@ classdef LinearMaze < handle
         end
         
         function set.speed(obj, speed)
-            obj.print('speed,%.2f', speed);
+            obj.print('speed,%.2f', speed);f
             obj.mSpeed = speed;
         end
         
@@ -334,13 +383,27 @@ classdef LinearMaze < handle
             speed = obj.mSpeed;
         end
         
-        function sliderSpeed(source)
-        val = 51 - source.Value;
-        % For R2014a and earlier:
-        %val = 51 - get(obj,'value')
-
-        %zlim(ax,[-val val]);
-    end
+        function sliderSpeed(obj)
+            if obj.hardware == 0
+                obj.mSpeed = obj.slider_Speed_h.Value;
+            else
+                obj.steeringPushfactor = obj.slider_Speed_h.Value;
+            end
+    
+        end
+        
+        function MovieModeDirection(obj)
+%             if obj.movieDirection_h.Value == 1 %random
+%                 obj.movieDirection = 0;
+%             elseif obj.movieDirection_h.Value == 2 %left 
+%                 obj.movieDirection = 1;
+%             else
+%                 obj.movieDirection = 2;%right
+%             end
+            
+        end
+        
+        
         
         function delete(obj)
             % LinearMaze.delete()
@@ -381,6 +444,17 @@ classdef LinearMaze < handle
                 obj.pauseId = obj.scheduler.delay({@obj.pause, 0}, duration);
             end
         end
+        
+        function tempMovie(obj)
+            if ~isempty(obj.com)
+                if obj.tempMovieMode.Value == 1
+                    obj.hardware = 2;
+                else
+                    obj.hardware = 0;
+                end
+            end
+        end
+                    
         
         function print(obj, format, varargin)
             % LinearMaze.print(format, arg1, arg2, ...)
@@ -454,31 +528,35 @@ classdef LinearMaze < handle
             %left or right
             
             if obj.hardware == 0  %if not using steering 
-                rand = randi(0:1);
+                rand = obj.movieDirection_h.Value;
+                if rand == 1
+                    rand = round(rand+2);%2 or 3
+                end
                 obj.nodes.vertices = obj.vertices(obj.branchNum,:);
                 if obj.branchNum == 1
                     
                     
                     
-                    if rand == 0 %go left
+                    if rand == 2 %go left
                         obj.nodes.vertices(end-1) = -35;
-                    elseif rand == 1 %go right
+                    else %go right
                        obj.nodes.vertices(end-1) = 35;
                     end
+                    
                 elseif obj.branchNum == 2
                     
                     
-                    if rand == 0 %go left
+                    if rand == 2 %go left
                         obj.nodes.vertices(end-1) = 240;
-                    elseif rand == 1 %go right
+                    else%go right
                        obj.nodes.vertices(end-1) = 270;
                     end
                 elseif obj.branchNum == 3
                     
                     
-                    if rand == 0 %go left
+                    if rand == 2 %go left
                         obj.nodes.vertices(end-1) = 446;
-                    elseif rand == 1 %go right
+                    else %go right
                        obj.nodes.vertices(end-1) = 488;
                     end
                 end
@@ -565,13 +643,9 @@ classdef LinearMaze < handle
         function chooseBranch(obj)
             % LinearMaze.chooseBranch()
             % choose the branch.
-            if ~isempty(obj.textBox.String) %if user typed in text box on button press do this
-                %disp(obj.textBox.String)
-                
-                obj.branchNum = str2num(obj.textBox.String); %set current branch to the one selected
-                
-               
-                
+            
+                obj.branchNum = obj.choosebranch_h.Value %set current branch to the one selected
+             
 %                 if obj.textBox.String == '1' %if number corresponds to branch number, move camera, change vertices next trial
 %                     obj.branchNum = 1;
 %                 elseif obj.textBox.String == '2'
@@ -580,10 +654,6 @@ classdef LinearMaze < handle
 %                     obj.branchNum = 3;
 %                 end
 
-                
-                obj.textBox.String = '';%clear textbox
-            end
-            
         end
         
         function onTape(obj, forward)
@@ -682,8 +752,8 @@ classdef LinearMaze < handle
                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                     obj.addresses);
             
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - obj.x_yRotation;
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + obj.y_yRotation;
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.y_yRotation*obj.steeringPushfactor);
                 
                     if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
                         %obj.vectorPosition(1:2) = obj.vertices(1:2); 
