@@ -193,9 +193,15 @@ classdef LinearMaze < handle
         % update - Last string logged during an update operation.
         update = ''
         
-        hardware =2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
         com 
+        
+%         %these all hold the value of where the x coordinate of the branch
+%         %walls to the left or right side
+%         left_leftwall %left branch
+%         left_rightwall
+%         right_leftwall %right branch
+%         right_rightwall
         
     end
     
@@ -207,6 +213,7 @@ classdef LinearMaze < handle
         programVersion = '20180525';
         
         
+        hardware =2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
         
     end
@@ -883,10 +890,8 @@ classdef LinearMaze < handle
 %             end
 %         end
 
-        function leftwallfunc(obj, zPosit)
-            
-            
-        end
+        
+       
         
         function onUpdate(obj)
             % LinearMaze.onUpdate()
@@ -926,21 +931,29 @@ classdef LinearMaze < handle
                             
                     elseif obj.vectorPosition(2)>=-28
                         %bound x by function of z
-                        if obj.vectorPosition(1) < leftwallfunc( z )%too far left
-                            obj.vectorPosition = leftwallsfunc( z );%function of z
-                        elseif obj.vectorPosition(1) > rightwallfunc( z ) %too far right
-                            obj.vectorPosition = rightwallfunc( z );%function of z
+                        if obj.vectorPosition(1) < 466 %left path
+                            if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2)) %too far left
+                                obj.vectorPosition(1) = obj.left_leftwall(obj.vectorPosition(2));%function of z
+                            elseif obj.vectorPosition(1) > obj.left_rightwall(obj.vectorPosition(2)) %too far right
+                                obj.vectorPosition(1) = obj.left_rightwall(obj.vectorPosition(2)); %function of z
+                            end
+                        elseif obj.vectorPosition(1) > 466 %right path
+                            if obj.vectorPosition(1) < obj.right_leftwall(obj.vectorPosition(2)) %too far left
+                                obj.vectorPosition(1) = obj.right_leftwall(obj.vectorPosition(2));%function of z
+                            elseif obj.vectorPosition(1) > obj.right_rightwall(obj.vectorPosition(2)) %too far right
+                                obj.vectorPosition(1) = obj.right_rightwall(obj.vectorPosition(2)); %function of z
+                            end
                         end
-                     
-                        
+                    end
                     %---------------------------------------------------------------------------------
                         %this used to be a if statement make into else 
-                else obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
-                        %obj.vectorPosition(1:2) = obj.vertices(1:2); 
-                        obj.newTrial();
-                    end
-                end
-               
+                     if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
+                            %obj.vectorPosition(1:2) = obj.vertices(1:2); 
+                            obj.newTrial();
+                     end
+                 end
+                
+              
                     
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
@@ -954,9 +967,34 @@ classdef LinearMaze < handle
         end
         
         
+        
+        
     end
     
     methods (Static)
+          function x = left_leftwall(z)
+            %left side of left branch
+            x = z/(-1.75)  +  441;
+        end
+        
+        function x = left_rightwall(z)
+            %right side of left branch
+            x = z/(-1.75) + 450;
+            
+        end
+        
+        function x = right_leftwall(z)
+            %left side of right branch
+            x = z/1.647 + 483;
+            
+        end
+        
+        function x = right_rightwall(z)
+            %right side of right branch
+            x = z/1.556 + 493;
+            
+        end
+        
         function export(filename)
             % LinearMaze.export(filename)
             % Convert log file to a mat file.
@@ -966,6 +1004,8 @@ classdef LinearMaze < handle
             [folder, filename] = fileparts(filename);
             save(fullfile(folder, sprintf('%s.mat', filename)), 'header', 'data');
         end
+        
+       
     end
 end
 
