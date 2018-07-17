@@ -1,15 +1,5 @@
-%Notes: random button doesnt work
-%scale down steering speed
-
-
-
-
-
-
-
-
-
-
+%Notes: 
+%make sure onstep works new change to choose distance
 
 
 % LinearMaze - Controller for a linear maze using custom behavioral apparatus.
@@ -102,7 +92,7 @@ classdef LinearMaze < handle
         % vertices - Vertices of the maze (x1, y1; x2, y2 ... in cm).
         %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
          vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];
-        
+        straightDist;
         vectorPosition = [0, -100];%starting position to be updated if hardware on
         %branch number - tells what branch to move camera  to
         branchNum = 1
@@ -110,11 +100,9 @@ classdef LinearMaze < handle
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
         
-        %inputs = ['com', 'COM4', 'monitors', {'127.0.0.1', 0, '192.168.1.100', 90}]
-        
-        yRotation = 0; %for rotating the camera for steering
+        yRotation = 90; %for rotating the camera for steering
         x_yRotation = 0;
-        y_yRotation = 1;
+        z_yRotation = 1;
         
         
     end
@@ -154,8 +142,8 @@ classdef LinearMaze < handle
         
         mSpeed = 0;
         
-        slider_Speed_h;
-        steeringPushfactor;
+       % slider_Speed_h;
+        steeringPushfactor = 20;
         
         choosebranch_h;
         
@@ -164,7 +152,9 @@ classdef LinearMaze < handle
         movieDirection;
         movieDirection_h;
         
+        choiceDistance_h
         
+        gratingSide;
         % nodes - Nodes object for controlling behavior.
         nodes
         
@@ -189,7 +179,13 @@ classdef LinearMaze < handle
         % textBox - Textbox GUI.
         textBox
         
+        textBox_speed
         
+        textBox_stimRotation %handle to textbox
+        stimRot = 90 %variable holding current grating rotation. 90deg here is 0deg in unity.
+        
+        stimSize %which stimulus size to show. default: thick
+        stimSize_string = 'Thick' %default: thick
         
         % trial - Trial number.
         trial = 1
@@ -197,9 +193,9 @@ classdef LinearMaze < handle
         % update - Last string logged during an update operation.
         update = ''
         
-        hardware =0;%0:no hardware,  2:steeringOnly
+        hardware =2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
-        com
+        com 
         
     end
     
@@ -218,11 +214,11 @@ classdef LinearMaze < handle
     methods
         function obj = LinearMaze(varargin)
             %   Controller for a liner-maze.
-            % LinearMaze('com', comPortName, ...)
+             %  offset1, ip2, offset2, ...}, ...)
             %   Provide the serial port name of the treadmill (rotary encoder, pinch valve,
             %   photo-sensor, and lick-sensors assumed connected to an Arduino microcontroller
             %   running a matching firmware).
-            % LinearMaze('monitors', {ip1, offset1, ip2, offset2, ...}, ...)
+            %LinearMaze('com', 'com5','monitors', {'192.168.0.111',0, '192.168.0.109',90,'192.168.0.110',-90,});
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
             %commandwindow
             %varargin
@@ -233,11 +229,11 @@ classdef LinearMaze < handle
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
             k = find(strcmpi(keys, 'com'), 1);
-%             if isempty(k)
-%                 com = [];
-%             else
-                %com = 'com5'; %values{k};
-%             end
+             if isempty(k)
+                 obj.com = [];
+             else
+                obj.com = 'com5'; %values{k};
+             end
            
             if obj.hardware == 0 %no hardware
                 obj.com = [];
@@ -248,7 +244,7 @@ classdef LinearMaze < handle
             end
             
             if obj.hardware == 0 %if no hardware
-                obj.mSpeed = 40;
+                obj.mSpeed = 25;
             end 
                 
             
@@ -304,12 +300,12 @@ classdef LinearMaze < handle
             obj.nodes.vertices = obj.vertices(obj.branchNum,:);
             
             % Release resources when the figure is closed.
-            obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off', 'DeleteFcn', @(~, ~)obj.delete());
+            obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
             h(1) = uicontrol('Style', 'PushButton', 'String', 'Stop',  'Callback', @(~, ~)obj.stop());
             h(2) = uicontrol('Style', 'PushButton', 'String', 'Start', 'Callback', @(~, ~)obj.start());
             h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
             
-            h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text', 'Callback', @(~, ~)obj.onLogButton());
+            h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text above', 'Callback', @(~, ~)obj.onLogButton());
             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
             h(5) = uicontrol('Style', 'Edit');
             
@@ -317,25 +313,52 @@ classdef LinearMaze < handle
                'String', {'branch1', 'branch2','branch3'},...
                'Callback', @(~,~)obj.chooseBranch()); 
            
-            h(7) = uicontrol('Style', 'slider',...
-                             'Min',0,'Max',50,'Value',25,...
-                             'Callback', @(~,~)obj.sliderSpeed());
-            h(8) = uicontrol('Style', 'popup',...
-               'String', {'steering on', 'tempMovieMode'},...
-               'Callback', @(~,~)obj.tempMovie()); 
+%             h(7) = uicontrol('Style', 'slider',...
+%                              'Min',0,'Max',50,'Value',25,...
+%                              'Callback', @(~,~)obj.sliderSpeed());
+                         
+            h(7) = uicontrol('Style', 'PushButton', 'String', 'SetSpeed above (default:25)', 'Callback', @(~, ~)obj.textSpeed());
+            %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+            h(8) = uicontrol('Style', 'Edit');
+                         
+                         
+                         
+            h(9) = uicontrol('Style', 'popup',...
+               'String', {'(DoesntWork)steering on', '(DoesntWork)tempMovieMode'},...
+               'Callback', @(~,~)obj.tempMovie()); %broken dont use. may take out 
        
-           h(9) = uicontrol('Style', 'popup',...
+           h(10) = uicontrol('Style', 'popup',...
                'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'}); 
-       
+           h(11) = uicontrol('Style', 'popup',...
+               'String', {'steeringoff:4/4', 'steeringoff:3/4','steeringoff:2/4','steeringoff:1/4'}); 
+
+           h(12) = uicontrol('Style', 'popup',...
+               'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'}); 
+           
+            h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
+            %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+            h(14) = uicontrol('Style', 'Edit');
+           
+            h(15) = uicontrol('Style', 'popup',...
+               'String', {'Grating:Thick', 'Grating:Thin'},'Callback', @(~, ~)obj.stimThickness()); 
+           
             p = get(h(1), 'Position');
             set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
+            %set(h(8:14), 'Position', [300+p(1),p(2), 4 * p(3), p(4)]);
             align(h, 'Left', 'Fixed', 0.5 * p(1));
+            %align(h(8:14), 'Right', 'Fixed', 0.5 * p(1));
             
             obj.textBox = h(5);
             obj.choosebranch_h = h(6);
-            obj.slider_Speed_h = h(7);
-            obj.tempMovieMode = h(8);
-            obj.movieDirection_h = h(9);
+            %obj.slider_Speed_h = h(7);
+            obj.textBox_speed = h(8);
+            obj.tempMovieMode = h(9);
+            obj.movieDirection_h = h(10);
+            obj.choiceDistance_h = h(11);
+            obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
+            obj.gratingSide = h(12);
+            obj.textBox_stimRotation = h(14);
+            obj.stimSize = h(15);
             
             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
             
@@ -346,10 +369,54 @@ classdef LinearMaze < handle
 %                 obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);%if hardware then use steeringPush (maybe combine this with onUpdate)
 %             end
             
+            
+            %initially turn off all stimulus. turn off thin
+            obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
+            %turn off thick
+            obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+            %turn off all gray cylinders
+            obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+        end
+        
+        function stimThickness(obj)
+            %yo = obj.stimSize.Value 
+            if obj.stimSize.Value == 1 %thick
+                obj.stimSize_string = 'Thick';
+            else %thin
+                obj.stimSize_string = 'Thin';
+            end
                 
         end
         
-
+        function textRotation(obj)
+            obj.stimRot = str2double(obj.textBox_stimRotation.String)+90;%add 90 so that 0 deg is horizontal in Unity
+%          if ~isempty(obj.textBox_stimRotation.String)
+%              obj.sender.send(sprintf('rotation,Branch1RightGrating,%.2f,-50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
+%              obj.sender.send(sprintf('rotation,Branch1LeftGrating,%.2f,50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
+%              obj.sender.send(sprintf('rotation,Branch2RightGrating,%.2f,-50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
+%              obj.sender.send(sprintf('rotation,Branch2LeftGrating,%.2f,50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
+%              obj.sender.send(sprintf('rotation,Branch3RightGrating,%.2f,-50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
+%              obj.sender.send(sprintf('rotation,Branch3LeftGrating,%.2f,50,90;', str2double(obj.textBox_ation.String)),obj.addresses);
+%                  
+%              
+%          end
+        end
+       
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
@@ -383,25 +450,34 @@ classdef LinearMaze < handle
             speed = obj.mSpeed;
         end
         
-        function sliderSpeed(obj)
-            if obj.hardware == 0
-                obj.mSpeed = obj.slider_Speed_h.Value;
-            else
-                obj.steeringPushfactor = obj.slider_Speed_h.Value;
-            end
+        function textSpeed(obj)
+%             if obj.hardware == 0
+%                 obj.mSpeed = obj.slider_Speed_h.Value;
+%             else
+%                 obj.steeringPushfactor = obj.slider_Speed_h.Value;
+%             end
+              if ~isempty(obj.textBox_speed.String)
+                 if obj.hardware == 0%movie
+                    obj.mSpeed = str2double(obj.textBox_speed.String);
+                 %else%steering - gets handled in onupdate
+                 %   obj.steeringPushfactor = str2double(obj.textBox_speed.String);
+                 end
+                 
+                %obj.textBox_speed.String = '';
+              end
     
         end
         
-        function MovieModeDirection(obj)
-%             if obj.movieDirection_h.Value == 1 %random
-%                 obj.movieDirection = 0;
-%             elseif obj.movieDirection_h.Value == 2 %left 
-%                 obj.movieDirection = 1;
-%             else
-%                 obj.movieDirection = 2;%right
-%             end
-            
-        end
+%         function MovieModeDirection(obj)
+% %             if obj.movieDirection_h.Value == 1 %random
+% %                 obj.movieDirection = 0;
+% %             elseif obj.movieDirection_h.Value == 2 %left 
+% %                 obj.movieDirection = 1;
+% %             else
+% %                 obj.movieDirection = 2;%right
+% %             end
+%             
+%         end
         
         
         
@@ -445,15 +521,27 @@ classdef LinearMaze < handle
             end
         end
         
-        function tempMovie(obj)
-            if ~isempty(obj.com)
-                if obj.tempMovieMode.Value == 1
-                    obj.hardware = 2;
-                else
-                    obj.hardware = 0;
-                end
-            end
-        end
+%         function tempMovie(obj)
+%            % if ~isempty(obj.com)
+%                 if obj.tempMovieMode.Value == 1
+%                     obj.enabled = true;
+% %                     obj.hardware = 2;
+% %                     obj.mSpeed = 0;
+% %                     
+%                  obj.treadmill = ArduinoTreadmill('com5');
+%                  obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
+%            
+%                 else
+%                     obj.enabled = false;
+% %                     obj.hardware = 0;
+% %                     obj.mSpeed = 25;
+% %                     
+%                  obj.treadmill = TreadmillInterface();
+% %                 
+%                 end
+%         end
+           % end
+        
                     
         
         function print(obj, format, varargin)
@@ -472,10 +560,10 @@ classdef LinearMaze < handle
             if obj.hardware == 0
                 obj.nodes.vertices = obj.vertices(obj.branchNum,:);
             elseif obj.hardware == 2
-                obj.yRotation = 0; %reset rotation on new trial
-                obj.y_yRotation = 1;
+                obj.yRotation = 90; %reset rotation on new trial
+                obj.z_yRotation = 1;
                 obj.x_yRotation = 0;
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation), obj.addresses);
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
                 obj.vectorPosition(1:2) = obj.vertices(1:2);
             end
             
@@ -524,22 +612,22 @@ classdef LinearMaze < handle
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
             
+            
+            
+            
             %if movie mode, and random then switch the final node randomly
             %left or right
-            
             if obj.hardware == 0  %if not using steering 
                 rand = obj.movieDirection_h.Value;
                 if rand == 1
-                    rand = round(rand+2);%2 or 3
+                    rand = randi([2 3]); %round(rand)+2%2 or 3
                 end
                 obj.nodes.vertices = obj.vertices(obj.branchNum,:);
                 if obj.branchNum == 1
-                    
-                    
-                    
+  
                     if rand == 2 %go left
                         obj.nodes.vertices(end-1) = -35;
-                    else %go right
+                    elseif rand ==3 %go right
                        obj.nodes.vertices(end-1) = 35;
                     end
                     
@@ -548,7 +636,7 @@ classdef LinearMaze < handle
                     
                     if rand == 2 %go left
                         obj.nodes.vertices(end-1) = 240;
-                    else%go right
+                    elseif rand ==3%go right
                        obj.nodes.vertices(end-1) = 270;
                     end
                 elseif obj.branchNum == 3
@@ -556,7 +644,7 @@ classdef LinearMaze < handle
                     
                     if rand == 2 %go left
                         obj.nodes.vertices(end-1) = 446;
-                    else %go right
+                    elseif rand ==3 %go right
                        obj.nodes.vertices(end-1) = 488;
                     end
                 end
@@ -567,13 +655,66 @@ classdef LinearMaze < handle
                 
                 obj.vectorPosition = obj.vertices(obj.branchNum,1:2);
                 obj.yRotation = 90; %reset rotation on new trial
-                obj.y_yRotation = 1;
+                obj.z_yRotation = 1;
                 obj.x_yRotation = 0;
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                
+                %obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                obj.sender.send(Tools.compose([sprintf(...
+                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+                obj.addresses);
             end
             
+            
+            
+            %initially turn off all stimulus. turn off thin
+            obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
+            %turn off thick
+            obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+            %turn off all gray cylinders
+            obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+            
+            
+             %set rotation of current branches stimuli
+             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.branchNum) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses);
+             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.branchNum) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses);
+             
+            %set the stimulus
+            side = obj.gratingSide.Value;
+            if side == 1 %random
+                side = randi([2 3]);
+            end
+            
+            if side == 2 %left
+                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'RightGray,1;'), obj.addresses);
+            elseif side == 3%right
+                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'LeftGray,1;'), obj.addresses);
+            
+            end
+            
+             
+            
+                
+            
             obj.treadmill.reward(obj.rewardDuration);
-            Tools.tone(obj.rewardTone(1), obj.rewardTone(2));
+            %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
             
             % Disable movement and show blank screen for the given duration.
             if obj.intertrialBehavior
@@ -644,7 +785,7 @@ classdef LinearMaze < handle
             % LinearMaze.chooseBranch()
             % choose the branch.
             
-                obj.branchNum = obj.choosebranch_h.Value %set current branch to the one selected
+                obj.branchNum = obj.choosebranch_h.Value; %set current branch to the one selected
              
 %                 if obj.textBox.String == '1' %if number corresponds to branch number, move camera, change vertices next trial
 %                     obj.branchNum = 1;
@@ -694,10 +835,12 @@ classdef LinearMaze < handle
             %end
             
             
-            %steeringWheel
-            if obj.enabled
+            %steeringWheel        if current posit  is greater than the
+            %                    starting posit plus 1/4 2/4 3/4 4/4 of the
+            %                    distance from start to split
+            if obj.enabled && obj.vectorPosition(2) > (5-obj.choiceDistance_h.Value)/4 * obj.straightDist(obj.branchNum) + obj.vertices(obj.branchNum,2)
                %disp('o')
-                obj.yRotation = obj.yRotation - step * obj.gain; %the yRotation is updated each time this function is called
+                obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
                 if obj.yRotation >= 180
                     obj.yRotation = 180;
@@ -706,12 +849,16 @@ classdef LinearMaze < handle
                 end
                 
                 obj.x_yRotation = cosd(obj.yRotation);
-                obj.y_yRotation = sind(obj.yRotation);
+                obj.z_yRotation = sind(obj.yRotation);
           
 %                 obj.sender.send(sprintf('position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2), ...
 %                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
                 
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                %obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                obj.sender.send(Tools.compose([sprintf(...
+                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+                obj.addresses);
             end
         end
                 
@@ -727,7 +874,7 @@ classdef LinearMaze < handle
 %                 obj.addresses);
 %             
 %                 obj.vectorPosition(1,1) = obj.vectorPosition(1,1) - obj.x_yRotation;
-%                 obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.y_yRotation;
+%                 obj.vectorPosition(1,2) = obj.vectorPosition(1,2) + obj.z_yRotation;
 %                 
 %                 if obj.vectorPosition(1,2) > obj.vertices(end) %get to reset node: then reset camera position
 %                     obj.vectorPosition(1:2) = obj.vertices(1:2); 
@@ -735,6 +882,11 @@ classdef LinearMaze < handle
 %                 end
 %             end
 %         end
+
+        function leftwallfunc(obj, zPosit)
+            
+            
+        end
         
         function onUpdate(obj)
             % LinearMaze.onUpdate()
@@ -747,19 +899,48 @@ classdef LinearMaze < handle
                     obj.nodes.push(obj.speed / obj.nodes.fps);
                 elseif obj.hardware == 2 && obj.enabled %hardware on, obj enabled
                      
-                
                     obj.sender.send(sprintf(...
                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                     obj.addresses);
-            
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.y_yRotation*obj.steeringPushfactor);
                 
-                    if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
+                    if ~isempty(obj.textBox_speed.String)
+                        obj.steeringPushfactor = str2double(obj.textBox_speed.String)*.05;%steering factor based off speed textbox and random 0.05 number
+                    else
+                        obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
+                    end
+                    
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
+                
+                    
+                    %not tested on hardware. only works on branch 3
+                    %----------------------------------------------------------------------------
+                    if obj.vectorPosition(2)<-28 %on straight path
+                        %bound x by [457, 475]
+                        if obj.vectorPosition(1) <457 %too far left
+                            obj.vectorPosition(1) = 457;
+                        elseif obj.vectorPosition(1) > 475 %too far right
+                            obj.vectorPosition = 475;
+                        end
+                        
+                            
+                    elseif obj.vectorPosition(2)>=-28
+                        %bound x by function of z
+                        if obj.vectorPosition(1) < leftwallfunc( z )%too far left
+                            obj.vectorPosition = leftwallsfunc( z );%function of z
+                        elseif obj.vectorPosition(1) > rightwallfunc( z ) %too far right
+                            obj.vectorPosition = rightwallfunc( z );%function of z
+                        end
+                     
+                        
+                    %---------------------------------------------------------------------------------
+                        %this used to be a if statement make into else 
+                else obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
                         %obj.vectorPosition(1:2) = obj.vertices(1:2); 
                         obj.newTrial();
                     end
                 end
+               
                     
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
