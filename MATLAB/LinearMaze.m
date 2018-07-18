@@ -196,12 +196,16 @@ classdef LinearMaze < handle
         
         com 
         
+        csvDataTable %holds info from csv preset
+        
 %         %these all hold the value of where the x coordinate of the branch
 %         %walls to the left or right side
 %         left_leftwall %left branch
 %         left_rightwall
 %         right_leftwall %right branch
 %         right_rightwall
+
+        
         
     end
     
@@ -213,7 +217,9 @@ classdef LinearMaze < handle
         programVersion = '20180525';
         
         
-        hardware =2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
+        hardware =0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
+        
+        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
         
     end
@@ -376,6 +382,12 @@ classdef LinearMaze < handle
 %                 obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);%if hardware then use steeringPush (maybe combine this with onUpdate)
 %             end
             
+            obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
+            obj.updateFromCSV(); %update variables with csv file values
+
+
+
+
             
             %initially turn off all stimulus. turn off thin
             obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
@@ -400,8 +412,32 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
         end
         
+        function updateFromCSV(obj)
+            currentValues = obj.csvDataTable{obj.trial,:}; %Trial	BranchNum	stim(on/off)	Spacial Freq (stim)	orientation (stim)	Reward Side	side (movie mode)	steering type (movie/wheel)	speed	distance from split turn on steering ([1,2,3,4]/4)	logText
+       
+            set(obj.choosebranch_h, 'Value', currentValues(2)) %change branchNum
+            obj.chooseBranch()
+            
+            set(obj.gratingSide, 'Value', currentValues(3)) %change stim side
+            
+            set(obj.stimSize, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
+            obj.stimThickness()
+            
+            %currentValues(5)
+            set(obj.textBox_stimRotation, 'String', currentValues(5)) %change stim orientation
+            obj.textRotation()
+            
+            set(obj.movieDirection_h, 'Value', currentValues(6)) %change moviemode direction
+            
+            set(obj.textBox_speed, 'String', currentValues(8)) %change stim orientation
+            obj.textSpeed()
+            
+            set(obj.choiceDistance_h, 'Value', currentValues(9)) %change distance from split turn on steering ([1, 2, 3, 4]/4)
+            
+            
+        end
+        
         function stimThickness(obj)
-            %yo = obj.stimSize.Value 
             if obj.stimSize.Value == 1 %thick
                 obj.stimSize_string = 'Thick';
             else %thin
@@ -619,8 +655,15 @@ classdef LinearMaze < handle
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
             
+            %this is how to change and update a popupmenu in GUI:
+%             set(obj.choosebranch_h, 'Value', 2)
+%             obj.chooseBranch()
+
+            obj.trial = obj.trial + 1;
             
-            
+            obj.updateFromCSV() %update input values from csv file
+
+
             
             %if movie mode, and random then switch the final node randomly
             %left or right
@@ -730,7 +773,7 @@ classdef LinearMaze < handle
                 obj.pause(obj.intertrialDuration);
             end
             obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
-            obj.trial = obj.trial + 1;
+            
             obj.print('trial,%i', obj.trial);
         end
         
@@ -946,14 +989,14 @@ classdef LinearMaze < handle
                         end
                     end
                     %---------------------------------------------------------------------------------
-                        %this used to be a if statement make into else 
-                     if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
-                            %obj.vectorPosition(1:2) = obj.vertices(1:2); 
-                            obj.newTrial();
-                     end
+                        
                  end
                 
-              
+           
+             if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
+                    %obj.vectorPosition(1:2) = obj.vertices(1:2); 
+                    obj.newTrial();
+             end   
                     
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
