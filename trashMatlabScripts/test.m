@@ -1,7 +1,2 @@
-classdef(
-    
-yo = hi(2)
+%this calls LinearMaze.m with the chosen preset information
 
-function x = hi(y)
-    x = 2*y;
-end

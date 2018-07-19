@@ -41,7 +41,9 @@
 % 2017-12-13. Leonardo Molina.
 % 2018-05-25. Leonardo Molina.
 classdef LinearMaze < handle
+    %%
     properties
+        % properties of the class
         
         % intertrialBehavior - Whether to permit behavior during an intertrial.
         intertrialBehavior = false;
@@ -83,6 +85,7 @@ classdef LinearMaze < handle
     end
     
     properties (SetAccess = private)
+        
         % filename - Name of the log file.
         filename
         
@@ -108,6 +111,7 @@ classdef LinearMaze < handle
     end
     
     properties (Dependent)
+        
         % gain - Forward speed factor in closed-loop when the rotary encoder produces movement.
         gain
         
@@ -135,26 +139,40 @@ classdef LinearMaze < handle
         % fid - Log file identifier.
         fid
         
-        % figureHandle - UI handle to control figure.
-        figureHandle
-        
         mGain = 5;
         
         mSpeed = 0;
         
-       % slider_Speed_h;
+         
         steeringPushfactor = 20;
         
+        
+        %% UI hadles
+        % figureHandle - UI handle to control figure.
+        figureHandle
+       
         choosebranch_h;
         
-        tempMovieMode;
+        tempMovieMode_h;
         
-        movieDirection;
+        %movieDirection;
         movieDirection_h;
         
         choiceDistance_h
         
-        gratingSide;
+        gratingSide_h;
+        
+        % textBox - Textbox GUI.
+        textBox_h
+        
+        textBox_speed_h
+        
+        textBox_stimRotation_h %handle to textbox
+        stimRot = 90 %variable holding current grating rotation. 90deg here is 0deg in unity.
+        
+        stimSize_h %which stimulus size to show. default: thick
+        stimSize_string = 'Thick' %variable changed by stimSize_h handle. default: thick
+        %%
         % nodes - Nodes object for controlling behavior.
         nodes
         
@@ -176,16 +194,7 @@ classdef LinearMaze < handle
         % tapeControl - Control when to trigger a trial based on tape crossings.
         tapeControl = [0 1]
         
-        % textBox - Textbox GUI.
-        textBox
         
-        textBox_speed
-        
-        textBox_stimRotation %handle to textbox
-        stimRot = 90 %variable holding current grating rotation. 90deg here is 0deg in unity.
-        
-        stimSize %which stimulus size to show. default: thick
-        stimSize_string = 'Thick' %default: thick
         
         % trial - Trial number.
         trial = 1
@@ -210,6 +219,7 @@ classdef LinearMaze < handle
     end
     
     properties (Constant)
+        
         % fps - Frames per seconds for time integration; should match VR game.
         fps = 50
         
@@ -223,8 +233,9 @@ classdef LinearMaze < handle
         
         
     end
-    
+    %%
     methods
+        %% initialize function: LinearMaze('com', 'com5','monitors', {'192.168.0.111',0, '192.168.0.109',90,'192.168.0.110',-90,});
         function obj = LinearMaze(varargin)
             %   Controller for a liner-maze.
              %  offset1, ip2, offset2, ...}, ...)
@@ -324,29 +335,23 @@ classdef LinearMaze < handle
             
             h(6) = uicontrol('Style', 'popup',...
                'String', {'branch1', 'branch2','branch3'},...
-               'Callback', @(~,~)obj.chooseBranch()); 
-           
-%             h(7) = uicontrol('Style', 'slider',...
-%                              'Min',0,'Max',50,'Value',25,...
-%                              'Callback', @(~,~)obj.sliderSpeed());
+               'Callback', @(~,~)obj.chooseBranch());
                          
             h(7) = uicontrol('Style', 'PushButton', 'String', 'SetSpeed above (default:25)', 'Callback', @(~, ~)obj.textSpeed());
             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
             h(8) = uicontrol('Style', 'Edit');
                          
-                         
-                         
             h(9) = uicontrol('Style', 'popup',...
                'String', {'(DoesntWork)steering on', '(DoesntWork)tempMovieMode'},...
                'Callback', @(~,~)obj.tempMovie()); %broken dont use. may take out 
        
-           h(10) = uicontrol('Style', 'popup',...
-               'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'}); 
-           h(11) = uicontrol('Style', 'popup',...
-               'String', {'steeringoff:4/4', 'steeringoff:3/4','steeringoff:2/4','steeringoff:1/4'}); 
+            h(10) = uicontrol('Style', 'popup',...
+               'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'},'Callback', @(~,~)obj.ManualDirection()); 
+            h(11) = uicontrol('Style', 'popup',...
+               'String', {'steeringoff:4/4', 'steeringoff:3/4','steeringoff:2/4','steeringoff:1/4'},'Callback', @(~,~)obj.tempMovie()); 
 
-           h(12) = uicontrol('Style', 'popup',...
-               'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'}); 
+            h(12) = uicontrol('Style', 'popup',...
+               'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'},'Callback',@(~, ~)obj.ManualGratingSide()); 
            
             h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
@@ -361,17 +366,16 @@ classdef LinearMaze < handle
             align(h, 'Left', 'Fixed', 0.5 * p(1));
             %align(h(8:14), 'Right', 'Fixed', 0.5 * p(1));
             
-            obj.textBox = h(5);
+            obj.textBox_h = h(5);
             obj.choosebranch_h = h(6);
-            %obj.slider_Speed_h = h(7);
-            obj.textBox_speed = h(8);
-            obj.tempMovieMode = h(9);
+            obj.textBox_speed_h = h(8);
+            obj.tempMovieMode_h = h(9);
             obj.movieDirection_h = h(10);
             obj.choiceDistance_h = h(11);
             obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
-            obj.gratingSide = h(12);
-            obj.textBox_stimRotation = h(14);
-            obj.stimSize = h(15);
+            obj.gratingSide_h = h(12);
+            obj.textBox_stimRotation_h = h(14);
+            obj.stimSize_h = h(15);
             
             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
             
@@ -412,54 +416,129 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
         end
         
+        %% these functions are for the GUI
+        
         function updateFromCSV(obj)
             currentValues = obj.csvDataTable{obj.trial,:}; %Trial	BranchNum	stim(on/off)	Spacial Freq (stim)	orientation (stim)	Reward Side	side (movie mode)	steering type (movie/wheel)	speed	distance from split turn on steering ([1,2,3,4]/4)	logText
        
             set(obj.choosebranch_h, 'Value', currentValues(2)) %change branchNum
-            obj.chooseBranch()
+            %obj.chooseBranch() 
             
-            set(obj.gratingSide, 'Value', currentValues(3)) %change stim side
+            set(obj.gratingSide_h, 'Value', currentValues(3)) %change stim side
+           
             
-            set(obj.stimSize, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
-            obj.stimThickness()
-            
-            %currentValues(5)
-            set(obj.textBox_stimRotation, 'String', currentValues(5)) %change stim orientation
-            obj.textRotation()
+            set(obj.stimSize_h, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
+            %obj.stimThickness() 
+           
+            set(obj.textBox_stimRotation_h, 'String', currentValues(5)) %change stim orientation
+            %obj.textRotation()
             
             set(obj.movieDirection_h, 'Value', currentValues(6)) %change moviemode direction
             
-            set(obj.textBox_speed, 'String', currentValues(8)) %change stim orientation
-            obj.textSpeed()
+            
+            set(obj.textBox_speed_h, 'String', currentValues(8)) %change stim orientation
+            %obj.textSpeed() 
             
             set(obj.choiceDistance_h, 'Value', currentValues(9)) %change distance from split turn on steering ([1, 2, 3, 4]/4)
             
-            
+        end
+       
+        function chooseBranch(obj)
+            % This function overwrites the csvfile data table when a manual input is entered
+            obj.csvDataTable{obj.trial+1:end,2} = obj.choosebranch_h.Value; %index is the 2nd column. overwrite branchNum data with this branchNum
+
+        end
+        
+        function ManualGratingSide(obj)
+             obj.csvDataTable{obj.trial+1:end,3} = obj.gratingSide_h.Value; %index is the 3th column.
+
         end
         
         function stimThickness(obj)
-            if obj.stimSize.Value == 1 %thick
-                obj.stimSize_string = 'Thick';
-            else %thin
-                obj.stimSize_string = 'Thin';
-            end
-                
+            % This function overwrites csvdatatable with manual input for Next trial's preset stim spatial freq
+
+            obj.csvDataTable{obj.trial+1:end,4} = obj.stimSize_h.Value; %index is the 4nd column.
         end
         
         function textRotation(obj)
-            obj.stimRot = str2double(obj.textBox_stimRotation.String)+90;%add 90 so that 0 deg is horizontal in Unity
-%          if ~isempty(obj.textBox_stimRotation.String)
-%              obj.sender.send(sprintf('rotation,Branch1RightGrating,%.2f,-50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
-%              obj.sender.send(sprintf('rotation,Branch1LeftGrating,%.2f,50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
-%              obj.sender.send(sprintf('rotation,Branch2RightGrating,%.2f,-50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
-%              obj.sender.send(sprintf('rotation,Branch2LeftGrating,%.2f,50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
-%              obj.sender.send(sprintf('rotation,Branch3RightGrating,%.2f,-50,90;', str2double(obj.textBox_stimRotation.String)),obj.addresses);
-%              obj.sender.send(sprintf('rotation,Branch3LeftGrating,%.2f,50,90;', str2double(obj.textBox_ation.String)),obj.addresses);
-%                  
-%              
-%          end
+           % This function overwrites csvdatatable with manual input for Next trial's preset stim orientation
+
+            obj.csvDataTable{obj.trial+1:end,5} = str2double(obj.textBox_stimRotation_h.String); %index is the 5th column.
+
+        end
+        
+        function ManualDirection(obj)
+                obj.csvDataTable{obj.trial+1:end,6} = obj.movieDirection_h.Value;%index is the 6nd column.
+    
+        end
+        
+        function textSpeed(obj)
+           % This function overwrites csvdatatable with manual input for Next trials' preset speed
+
+            obj.csvDataTable{obj.trial+1:end,8} = str2double(obj.textBox_speed_h.String);%index is the 8nd column.
+    
+        end
+        
+        function ManualChoiceDistance(obj)
+             obj.csvDataTable{obj.trial+1:end,9} = obj.choiceDistance_h.Value; %index is the 9nd column.
+        end
+        
+        
+        function reset(obj)
+            % LinearMaze.reset()
+            % Reset trial, position, rotation, frame count and encoder steps.
+            
+            obj.trial = 1;
+            if obj.hardware == 0
+                obj.nodes.vertices = obj.vertices(obj.choosebranch_h.Value,:);
+            elseif obj.hardware == 2
+                obj.yRotation = 90; %reset rotation on new trial
+                obj.z_yRotation = 1;
+                obj.x_yRotation = 0;
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                obj.vectorPosition(1:2) = obj.vertices(1:2);
+            end
+            
+            % Frame counts and steps are reset to zero.
+            obj.treadmill.frame = 0;
+            obj.treadmill.step = 0;
+            obj.print('note,reset');
         end
        
+        function start(obj)
+            % LinearMaze.start()
+            % Send high pulse to trigger-out and enable behavior.
+            
+            % Load an existing scene.
+            obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
+            
+            % Hide user menu.
+            obj.sender.send('enable,Menu,0;', obj.addresses);
+            
+            % Hide blank and enable external devices and behavior.
+            obj.sender.send('enable,Blank,0;', obj.addresses);
+            
+            % Send a high pulse to trigger-out.
+            obj.treadmill.trigger = true;
+            obj.enabled = true;
+            obj.print('note,start');
+        end
+        
+        function stop(obj)
+            % LinearMaze.stop()
+            % Send low pulse to trigger-out and disable behavior.
+            
+            % Show blank and disable external devices and behavior.
+            obj.enabled = false;
+            obj.treadmill.trigger = false;
+            obj.sender.send('enable,Blank,1;', obj.addresses);
+            %obj.sender.send('enable,Mouse,1;', obj.addresses); %this is how
+            %to turn off and on (0 or 1 respectively) objects in Main 
+            
+            obj.print('note,stop');
+        end
+        
+        %%
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
@@ -486,30 +565,24 @@ classdef LinearMaze < handle
         
         function set.speed(obj, speed)
             obj.print('speed,%.2f', speed);f
+
             obj.mSpeed = speed;
         end
         
         function speed = get.speed(obj)
-            speed = obj.mSpeed;
-        end
-        
-        function textSpeed(obj)
-%             if obj.hardware == 0
-%                 obj.mSpeed = obj.slider_Speed_h.Value;
-%             else
-%                 obj.steeringPushfactor = obj.slider_Speed_h.Value;
-%             end
-              if ~isempty(obj.textBox_speed.String)
+            if ~isempty(obj.textBox_speed_h.String)
                  if obj.hardware == 0%movie
-                    obj.mSpeed = str2double(obj.textBox_speed.String);
+                    obj.mSpeed = str2double(obj.textBox_speed_h.String);
                  %else%steering - gets handled in onupdate
                  %   obj.steeringPushfactor = str2double(obj.textBox_speed.String);
                  end
                  
                 %obj.textBox_speed.String = '';
-              end
-    
+            end
+            speed = obj.mSpeed;
         end
+        
+        
         
 %         function MovieModeDirection(obj)
 % %             if obj.movieDirection_h.Value == 1 %random
@@ -595,62 +668,11 @@ classdef LinearMaze < handle
             obj.log(format, varargin{:});
         end
         
-        function reset(obj)
-            % LinearMaze.reset()
-            % Reset trial, position, rotation, frame count and encoder steps.
-            
-            obj.trial = 1;
-            if obj.hardware == 0
-                obj.nodes.vertices = obj.vertices(obj.branchNum,:);
-            elseif obj.hardware == 2
-                obj.yRotation = 90; %reset rotation on new trial
-                obj.z_yRotation = 1;
-                obj.x_yRotation = 0;
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
-                obj.vectorPosition(1:2) = obj.vertices(1:2);
-            end
-            
-            % Frame counts and steps are reset to zero.
-            obj.treadmill.frame = 0;
-            obj.treadmill.step = 0;
-            obj.print('note,reset');
-        end
         
-        function start(obj)
-            % LinearMaze.start()
-            % Send high pulse to trigger-out and enable behavior.
-            
-            % Load an existing scene.
-            obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
-            
-            % Hide user menu.
-            obj.sender.send('enable,Menu,0;', obj.addresses);
-            
-            % Hide blank and enable external devices and behavior.
-            obj.sender.send('enable,Blank,0;', obj.addresses);
-            
-            % Send a high pulse to trigger-out.
-            obj.treadmill.trigger = true;
-            obj.enabled = true;
-            obj.print('note,start');
-        end
-        
-        function stop(obj)
-            % LinearMaze.stop()
-            % Send low pulse to trigger-out and disable behavior.
-            
-            % Show blank and disable external devices and behavior.
-            obj.enabled = false;
-            obj.treadmill.trigger = false;
-            obj.sender.send('enable,Blank,1;', obj.addresses);
-            %obj.sender.send('enable,Mouse,1;', obj.addresses); %this is how
-            %to turn off and on (0 or 1 respectively) objects in Main 
-            
-            obj.print('note,stop');
-        end
     end
-    
+   
     methods (Access = private)
+        %%
         function newTrial(obj)
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
@@ -672,8 +694,8 @@ classdef LinearMaze < handle
                 if rand == 1
                     rand = randi([2 3]); %round(rand)+2%2 or 3
                 end
-                obj.nodes.vertices = obj.vertices(obj.branchNum,:);
-                if obj.branchNum == 1
+                obj.nodes.vertices = obj.vertices(obj.choosebranch_h.Value,:);
+                if obj.choosebranch_h.Value == 1
   
                     if rand == 2 %go left
                         obj.nodes.vertices(end-1) = -35;
@@ -681,7 +703,7 @@ classdef LinearMaze < handle
                        obj.nodes.vertices(end-1) = 35;
                     end
                     
-                elseif obj.branchNum == 2
+                elseif obj.choosebranch_h.Value == 2
                     
                     
                     if rand == 2 %go left
@@ -689,7 +711,7 @@ classdef LinearMaze < handle
                     elseif rand ==3%go right
                        obj.nodes.vertices(end-1) = 270;
                     end
-                elseif obj.branchNum == 3
+                elseif obj.choosebranch_h.Value == 3
                     
                     
                     if rand == 2 %go left
@@ -703,7 +725,7 @@ classdef LinearMaze < handle
             
             elseif obj.hardware == 2
                 
-                obj.vectorPosition = obj.vertices(obj.branchNum,1:2);
+                obj.vectorPosition = obj.vertices(obj.choosebranch_h.Value,1:2);
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.z_yRotation = 1;
                 obj.x_yRotation = 0;
@@ -740,22 +762,29 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
             
             
+            if obj.stimSize_h.Value == 1 %thick
+                obj.stimSize_string = 'Thick';
+            else %thin
+                obj.stimSize_string = 'Thin';
+            end
+            
+            obj.stimRot = str2double(obj.textBox_stimRotation_h.String)+90;
              %set rotation of current branches stimuli
-             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.branchNum) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses);
-             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.branchNum) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses);
+             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.choosebranch_h.Value) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses);
+             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses);
              
             %set the stimulus
-            side = obj.gratingSide.Value;
+            side = obj.gratingSide_h.Value;
             if side == 1 %random
                 side = randi([2 3]);
             end
             
             if side == 2 %left
-                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
-                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'RightGray,1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'RightGray,1;'), obj.addresses);
             elseif side == 3%right
-                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
-                obj.sender.send(strcat('enable,Branch', num2str(obj.branchNum) ,'LeftGray,1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGray,1;'), obj.addresses);
             
             end
             
@@ -776,7 +805,7 @@ classdef LinearMaze < handle
             
             obj.print('trial,%i', obj.trial);
         end
-        
+        %%
         function onBridge(obj, connected)
             if connected
                 obj.print('note,Arduino connected.');
@@ -825,27 +854,13 @@ classdef LinearMaze < handle
             % LinearMaze.onLogButton()
             % Log user text.
             
-            if ~isempty(obj.textBox.String)
-                obj.print('note,%s', obj.textBox.String);
-                obj.textBox.String = '';
+            if ~isempty(obj.textBox_h.String)
+                obj.print('note,%s', obj.textBox_h.String);
+                obj.textBox_h.String = '';
             end
         end
         
-        function chooseBranch(obj)
-            % LinearMaze.chooseBranch()
-            % choose the branch.
-            
-                obj.branchNum = obj.choosebranch_h.Value; %set current branch to the one selected
-             
-%                 if obj.textBox.String == '1' %if number corresponds to branch number, move camera, change vertices next trial
-%                     obj.branchNum = 1;
-%                 elseif obj.textBox.String == '2'
-%                     obj.branchNum = 2;
-%                 elseif obj.textBox.String == '3'
-%                     obj.branchNum = 3;
-%                 end
-
-        end
+        
         
         function onTape(obj, forward)
             % LinearMaze.onTape(state)
@@ -888,7 +903,7 @@ classdef LinearMaze < handle
             %steeringWheel        if current posit  is greater than the
             %                    starting posit plus 1/4 2/4 3/4 4/4 of the
             %                    distance from start to split
-            if obj.enabled && obj.vectorPosition(2) > (5-obj.choiceDistance_h.Value)/4 * obj.straightDist(obj.branchNum) + obj.vertices(obj.branchNum,2)
+            if obj.enabled && obj.vectorPosition(2) > (5-obj.choiceDistance_h.Value)/4 * obj.straightDist(obj.choosebranch_h.Value) + obj.vertices(obj.choosebranch_h.Value,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -935,7 +950,7 @@ classdef LinearMaze < handle
 
         
        
-        
+        %%
         function onUpdate(obj)
             % LinearMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
@@ -951,8 +966,8 @@ classdef LinearMaze < handle
                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                     obj.addresses);
                 
-                    if ~isempty(obj.textBox_speed.String)
-                        obj.steeringPushfactor = str2double(obj.textBox_speed.String)*.05;%steering factor based off speed textbox and random 0.05 number
+                    if ~isempty(obj.textBox_speed_h.String)
+                        obj.steeringPushfactor = str2double(obj.textBox_speed_h.String)*.05;%steering factor based off speed textbox and random 0.05 number
                     else
                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
                     end
@@ -993,7 +1008,7 @@ classdef LinearMaze < handle
                  end
                 
            
-             if obj.vectorPosition(2) > obj.vertices(obj.branchNum,end) %get to reset node: then reset camera position
+             if obj.vectorPosition(2) > obj.vertices(obj.choosebranch_h.Value,end) %get to reset node: then reset camera position
                     %obj.vectorPosition(1:2) = obj.vertices(1:2); 
                     obj.newTrial();
              end   
@@ -1013,9 +1028,9 @@ classdef LinearMaze < handle
         
         
     end
-    
+    %% Walls and export log file
     methods (Static)
-          function x = left_leftwall(z)
+        function x = left_leftwall(z)
             %left side of left branch
             x = z/(-1.75)  +  441;
         end
