@@ -96,9 +96,9 @@ classdef LinearMaze < handle
         %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
          vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];
         straightDist;
-        vectorPosition = [0, -100];%starting position to be updated if hardware on
+        vectorPosition;% = [0, -100];%starting position to be updated if hardware on
         %branch number - tells what branch to move camera  to
-        branchNum = 1
+        %branchNum = 1
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
@@ -227,7 +227,7 @@ classdef LinearMaze < handle
         programVersion = '20180525';
         
         
-        hardware =0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
+        hardware =2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
         csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
@@ -253,23 +253,20 @@ classdef LinearMaze < handle
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
             k = find(strcmpi(keys, 'com'), 1);
-             if isempty(k)
-                 obj.com = [];
-             else
-                obj.com = 'com5'; %values{k};
-             end
+%              if isempty(k)
+%                  obj.com = [];
+%              else
+%                 obj.com = 'com5'; %values{k};
+%              end
            
             if obj.hardware == 0 %no hardware
                 obj.com = [];
-                
+                obj.mSpeed = 25;
             elseif obj.hardware == 2%hardware on
                 obj.com = 'com5';
-                
             end
             
-            if obj.hardware == 0 %if no hardware
-                obj.mSpeed = 25;
-            end 
+            
                 
             
             k = find(strcmpi(keys, 'monitors'), 1);
@@ -316,12 +313,7 @@ classdef LinearMaze < handle
             obj.treadmill.register('Step', @obj.onStep);
             obj.treadmill.register('Tape', @obj.onTape);
             
-            % Initialize nodes.
-            obj.nodes = Nodes();
-            obj.nodes.register('Change', @(position, distance, yaw, rotation)obj.onChange(position, distance, yaw));
-            obj.nodes.register('Lap', @(lap)obj.onLap);
-            obj.nodes.register('Node', @obj.onNode);
-            obj.nodes.vertices = obj.vertices(obj.branchNum,:);
+            
             
             % Release resources when the figure is closed.
             obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
@@ -379,19 +371,27 @@ classdef LinearMaze < handle
             
             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
             
-            obj.scheduler = Scheduler();
-            obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
-%             if obj.hardware == 2 (I put this function in onUpdate
+            
+%             if obj.hardware == 2 (I put this function in onUpdate)
 %                 obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);%if hardware then use steeringPush (maybe combine this with onUpdate)
 %             end
-            
+
+            % Initialize nodes.
+            obj.nodes = Nodes();
+            obj.nodes.register('Change', @(position, distance, yaw, rotation)obj.onChange(position, distance, yaw));
+            obj.nodes.register('Lap', @(lap)obj.onLap);
+            obj.nodes.register('Node', @obj.onNode);
+
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
             obj.updateFromCSV(); %update variables with csv file values
-
-
-
-
+            
+            obj.nodes.vertices = obj.vertices(obj.choosebranch_h.Value,:); %first update from csv then set the nodal path
+            
+            obj.vectorPosition = obj.vertices(obj.choosebranch_h.Value,1:2);%first update from csv set vector Position for steering wheel
+            
+            obj.scheduler = Scheduler();
+            obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
             %initially turn off all stimulus. turn off thin
             obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
@@ -474,9 +474,10 @@ classdef LinearMaze < handle
         
         function textSpeed(obj)
            % This function overwrites csvdatatable with manual input for Next trials' preset speed
-
-            obj.csvDataTable{obj.trial+1:end,8} = str2double(obj.textBox_speed_h.String);%index is the 8nd column.
-    
+            %obj.csvDataTable
+            obj.csvDataTable{obj.trial:end,8} = str2double(obj.textBox_speed_h.String);%index is the 8nd column.
+            
+            %obj.csvDataTable
         end
         
         function ManualChoiceDistance(obj)
@@ -573,6 +574,7 @@ classdef LinearMaze < handle
             if ~isempty(obj.textBox_speed_h.String)
                  if obj.hardware == 0%movie
                     obj.mSpeed = str2double(obj.textBox_speed_h.String);
+                    %obj.mSpeed = obj.csvDataTable{obj.trial,8};
                  %else%steering - gets handled in onupdate
                  %   obj.steeringPushfactor = str2double(obj.textBox_speed.String);
                  end
@@ -967,7 +969,7 @@ classdef LinearMaze < handle
                     obj.addresses);
                 
                     if ~isempty(obj.textBox_speed_h.String)
-                        obj.steeringPushfactor = str2double(obj.textBox_speed_h.String)*.05;%steering factor based off speed textbox and random 0.05 number
+                        obj.steeringPushfactor = obj.csvDataTable{obj.trial,8} * .05;%str2double(obj.textBox_speed_h.String)*.05;%steering factor based off speed textbox and random 0.05 number
                     else
                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
                     end
@@ -983,7 +985,7 @@ classdef LinearMaze < handle
                         if obj.vectorPosition(1) <457 %too far left
                             obj.vectorPosition(1) = 457;
                         elseif obj.vectorPosition(1) > 475 %too far right
-                            obj.vectorPosition = 475;
+                            obj.vectorPosition(1) = 475;
                         end
                         
                             
@@ -1007,12 +1009,20 @@ classdef LinearMaze < handle
                         
                  end
                 
-           
+             %obj.vectorPosition
+%             obj.vertices(obj.choosebranch_h.Value,end)
              if obj.vectorPosition(2) > obj.vertices(obj.choosebranch_h.Value,end) %get to reset node: then reset camera position
                     %obj.vectorPosition(1:2) = obj.vertices(1:2); 
                     obj.newTrial();
-             end   
-                    
+             end  
+             
+%             obj.treadmill.frame
+%             obj.treadmill.step
+%             %obj.nodes.distance
+%             obj.nodes.yaw
+%             obj.nodes.position(1)
+%             obj.nodes.position(2)
+            
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
                 if ~strcmp(str, obj.update)
@@ -1032,7 +1042,13 @@ classdef LinearMaze < handle
     methods (Static)
         function x = left_leftwall(z)
             %left side of left branch
+            %if obj.choosebranch_h.Value == 3 %branch 3
             x = z/(-1.75)  +  441;
+%             elseif %branch 2 
+%                 
+%             elseif %branch 3
+%                 
+%             end
         end
         
         function x = left_rightwall(z)
