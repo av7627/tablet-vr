@@ -94,11 +94,17 @@ classdef LinearMaze < handle
 		
         % vertices - Vertices of the maze (x1, y1; x2, y2 ... in cm).
         %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
-         vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];
+        vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];
         straightDist;
         vectorPosition;% = [0, -100];%starting position to be updated if hardware on
         %branch number - tells what branch to move camera  to
         %branchNum = 1
+        
+        %obj.branchArray = [[xleft, xmiddle,xright, z]] this is for walls. the
+        %vertices of where branch splits or turns
+        branchArray = [1 2 3 4
+                      1 2 3 4
+                   457,466,475,-28];
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
@@ -980,28 +986,30 @@ classdef LinearMaze < handle
                     
                     %not tested on hardware. only works on branch 3
                     %----------------------------------------------------------------------------
-                    if obj.vectorPosition(2)<-28 %on straight path
+                    
+                             
+                    if obj.vectorPosition(2)< obj.branchArray(obj.choosebranch_h.Value,4)%-28 %on straight path
                         %bound x by [457, 475]
-                        if obj.vectorPosition(1) <457 %too far left
+                        if obj.vectorPosition(1) < obj.branchArray(obj.choosebranch_h.Value,1) %457 too far left
                             obj.vectorPosition(1) = 457;
-                        elseif obj.vectorPosition(1) > 475 %too far right
+                        elseif obj.vectorPosition(1) > obj.branchArray(obj.choosebranch_h.Value,3) %475 %too far right
                             obj.vectorPosition(1) = 475;
                         end
                         
                             
-                    elseif obj.vectorPosition(2)>=-28
+                    elseif obj.vectorPosition(2) > obj.branchArray(obj.choosebranch_h.Value,4)%-28
                         %bound x by function of z
-                        if obj.vectorPosition(1) < 466 %left path
-                            if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2)) %too far left
-                                obj.vectorPosition(1) = obj.left_leftwall(obj.vectorPosition(2));%function of z
-                            elseif obj.vectorPosition(1) > obj.left_rightwall(obj.vectorPosition(2)) %too far right
-                                obj.vectorPosition(1) = obj.left_rightwall(obj.vectorPosition(2)); %function of z
+                        if obj.vectorPosition(1) < obj.branchArray(obj.choosebranch_h.Value,2)%466 %left path
+                            if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far left
+                                obj.vectorPosition(1) = obj.left_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value);%function of z
+                            elseif obj.vectorPosition(1) > obj.left_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far right
+                                obj.vectorPosition(1) = obj.left_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value); %function of z
                             end
-                        elseif obj.vectorPosition(1) > 466 %right path
-                            if obj.vectorPosition(1) < obj.right_leftwall(obj.vectorPosition(2)) %too far left
-                                obj.vectorPosition(1) = obj.right_leftwall(obj.vectorPosition(2));%function of z
-                            elseif obj.vectorPosition(1) > obj.right_rightwall(obj.vectorPosition(2)) %too far right
-                                obj.vectorPosition(1) = obj.right_rightwall(obj.vectorPosition(2)); %function of z
+                        elseif obj.vectorPosition(1) > obj.branchArray(obj.choosebranch_h.Value,2)%466 %right path
+                            if obj.vectorPosition(1) < obj.right_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far left
+                                obj.vectorPosition(1) = obj.right_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value);%function of z
+                            elseif obj.vectorPosition(1) > obj.right_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far right
+                                obj.vectorPosition(1) = obj.right_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value); %function of z
                             end
                         end
                     end
@@ -1040,33 +1048,51 @@ classdef LinearMaze < handle
     end
     %% Walls and export log file
     methods (Static)
-        function x = left_leftwall(z)
+        function x = left_leftwall(z,branch)
             %left side of left branch
-            %if obj.choosebranch_h.Value == 3 %branch 3
+           if branch == 3 %branch 3
             x = z/(-1.75)  +  441;
-%             elseif %branch 2 
-%                 
-%             elseif %branch 3
-%                 
-%             end
+           elseif branch == 2 %branch 2 
+                
+           elseif branch == 1 %branch 3
+                
+           end
         end
         
-        function x = left_rightwall(z)
+        function x = left_rightwall(z,branch)
             %right side of left branch
+            
+           if branch == 3 %branch 3
             x = z/(-1.75) + 450;
-            
+           elseif branch == 2 %branch 2 
+                
+           elseif branch == 1 %branch 3
+                
+           end
         end
         
-        function x = right_leftwall(z)
+        function x = right_leftwall(z, branch)
             %left side of right branch
-            x = z/1.647 + 483;
             
+           if branch == 3 %branch 3
+            x = z/1.647 + 483;
+           elseif branch == 2 %branch 2 
+                
+           elseif branch == 1 %branch 3
+                
+           end
         end
         
-        function x = right_rightwall(z)
+        function x = right_rightwall(z, branch)
             %right side of right branch
-            x = z/1.556 + 493;
             
+           if branch == 3 %branch 3
+            x = z/1.556 + 493;
+           elseif branch == 2 %branch 2 
+                
+           elseif branch == 1 %branch 3
+                
+           end
         end
         
         function export(filename)
