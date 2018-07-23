@@ -55,7 +55,7 @@ classdef LinearMaze < handle
         logOnChange = false;
         
         % logOnFrame - Create a log entry with every trigger-input.
-        logOnFrame = true;
+        logOnFrame = false;
         
         % logOnUpdate - Create a log entry at the frequency of the behavior controller.
         logOnUpdate = true;
@@ -102,8 +102,8 @@ classdef LinearMaze < handle
         
         %obj.branchArray = [[xleft, xmiddle,xright, z]] this is for walls. the
         %vertices of where branch splits or turns
-        branchArray = [1 2 3 4
-                      1 2 3 4
+        branchArray = [-5, 0, 5, -40
+                   244 ,255, 266, -24 
                    457,466,475,-28];
         
         % resetNode - When resetNode is reached, re-start.
@@ -113,7 +113,7 @@ classdef LinearMaze < handle
         x_yRotation = 0;
         z_yRotation = 1;
         
-        
+        currentBranch %variable that holds the number of the current branch
     end
     
     properties (Dependent)
@@ -392,6 +392,8 @@ classdef LinearMaze < handle
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
             obj.updateFromCSV(); %update variables with csv file values
             
+            obj.currentBranch = obj.csvDataTable.BranchNum(1);
+            
             obj.nodes.vertices = obj.vertices(obj.choosebranch_h.Value,:); %first update from csv then set the nodal path
             
             obj.vectorPosition = obj.vertices(obj.choosebranch_h.Value,1:2);%first update from csv set vector Position for steering wheel
@@ -420,6 +422,8 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
             obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+            
+            
         end
         
         %% these functions are for the GUI
@@ -427,6 +431,9 @@ classdef LinearMaze < handle
         function updateFromCSV(obj)
             currentValues = obj.csvDataTable{obj.trial,:}; %Trial	BranchNum	stim(on/off)	Spacial Freq (stim)	orientation (stim)	Reward Side	side (movie mode)	steering type (movie/wheel)	speed	distance from split turn on steering ([1,2,3,4]/4)	logText
        
+            
+            
+            
             set(obj.choosebranch_h, 'Value', currentValues(2)) %change branchNum
             %obj.chooseBranch() 
             
@@ -693,7 +700,7 @@ classdef LinearMaze < handle
             
             obj.updateFromCSV() %update input values from csv file
 
-
+            obj.currentBranch = obj.choosebranch_h.Value;
             
             %if movie mode, and random then switch the final node randomly
             %left or right
@@ -843,6 +850,8 @@ classdef LinearMaze < handle
             % Create an entry in the log file if logOnFrame == true.
             
             % Log changes including frame count and rotary encoder changes.
+            
+            % this following if statement gives problems for some reason
             if obj.logOnFrame
                 obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f', frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
             end
@@ -962,8 +971,7 @@ classdef LinearMaze < handle
         function onUpdate(obj)
             % LinearMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
-            
-            
+             
                 
                 if obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
@@ -984,32 +992,32 @@ classdef LinearMaze < handle
                     obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
                 
                     
-                    %not tested on hardware. only works on branch 3
+                
                     %----------------------------------------------------------------------------
                     
                              
-                    if obj.vectorPosition(2)< obj.branchArray(obj.choosebranch_h.Value,4)%-28 %on straight path
+                    if obj.vectorPosition(2)< obj.branchArray(obj.currentBranch,4)%-28 %on straight path
                         %bound x by [457, 475]
-                        if obj.vectorPosition(1) < obj.branchArray(obj.choosebranch_h.Value,1) %457 too far left
-                            obj.vectorPosition(1) = 457;
-                        elseif obj.vectorPosition(1) > obj.branchArray(obj.choosebranch_h.Value,3) %475 %too far right
-                            obj.vectorPosition(1) = 475;
+                        if obj.vectorPosition(1) < obj.branchArray(obj.currentBranch,1) %457 too far left
+                            obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,1);
+                        elseif obj.vectorPosition(1) > obj.branchArray(obj.currentBranch,3) %475 %too far right
+                            obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,3);
                         end
                         
                             
-                    elseif obj.vectorPosition(2) > obj.branchArray(obj.choosebranch_h.Value,4)%-28
+                    elseif obj.vectorPosition(2) >= obj.branchArray(obj.currentBranch,4)%-28
                         %bound x by function of z
-                        if obj.vectorPosition(1) < obj.branchArray(obj.choosebranch_h.Value,2)%466 %left path
-                            if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far left
+                        if obj.vectorPosition(1) <= obj.branchArray(obj.currentBranch,2)%466 %left path
+                            if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2),obj.currentBranch) %too far left
                                 obj.vectorPosition(1) = obj.left_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value);%function of z
-                            elseif obj.vectorPosition(1) > obj.left_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far right
-                                obj.vectorPosition(1) = obj.left_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value); %function of z
+                            elseif obj.vectorPosition(1) > obj.left_rightwall(obj.vectorPosition(2),obj.currentBranch) %too far right
+                                obj.vectorPosition(1) = obj.left_rightwall(obj.vectorPosition(2),obj.currentBranch); %function of z
                             end
-                        elseif obj.vectorPosition(1) > obj.branchArray(obj.choosebranch_h.Value,2)%466 %right path
-                            if obj.vectorPosition(1) < obj.right_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far left
-                                obj.vectorPosition(1) = obj.right_leftwall(obj.vectorPosition(2),obj.choosebranch_h.Value);%function of z
-                            elseif obj.vectorPosition(1) > obj.right_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value) %too far right
-                                obj.vectorPosition(1) = obj.right_rightwall(obj.vectorPosition(2),obj.choosebranch_h.Value); %function of z
+                        elseif obj.vectorPosition(1) > obj.branchArray(obj.currentBranch,2)%466 %right path
+                            if obj.vectorPosition(1) < obj.right_leftwall(obj.vectorPosition(2),obj.currentBranch) %too far left
+                                obj.vectorPosition(1) = obj.right_leftwall(obj.vectorPosition(2),obj.currentBranch);%function of z
+                            elseif obj.vectorPosition(1) > obj.right_rightwall(obj.vectorPosition(2),obj.currentBranch) %too far right
+                                obj.vectorPosition(1) = obj.right_rightwall(obj.vectorPosition(2),obj.currentBranch); %function of z
                             end
                         end
                     end
@@ -1019,7 +1027,7 @@ classdef LinearMaze < handle
                 
              %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
-             if obj.vectorPosition(2) > obj.vertices(obj.choosebranch_h.Value,end) %get to reset node: then reset camera position
+             if obj.vectorPosition(2) > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
                     %obj.vectorPosition(1:2) = obj.vertices(1:2); 
                     obj.newTrial();
              end  
@@ -1053,9 +1061,10 @@ classdef LinearMaze < handle
            if branch == 3 %branch 3
             x = z/(-1.75)  +  441;
            elseif branch == 2 %branch 2 
-                
-           elseif branch == 1 %branch 3
-                
+            x = (z-318.5)/(-1.4);
+          
+           elseif branch == 1 %branch 1
+            x = (z + 44.776)/(-.96);
            end
         end
         
@@ -1065,9 +1074,11 @@ classdef LinearMaze < handle
            if branch == 3 %branch 3
             x = z/(-1.75) + 450;
            elseif branch == 2 %branch 2 
-                
-           elseif branch == 1 %branch 3
-                
+            x = (z-1335)/(-5.33);
+          
+           elseif branch == 1 %branch 1
+            
+            x = (z+40)/(-1.3);
            end
         end
         
@@ -1075,11 +1086,12 @@ classdef LinearMaze < handle
             %left side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.647 + 483;
+            x = z/1.65 + 483;
            elseif branch == 2 %branch 2 
-                
-           elseif branch == 1 %branch 3
-                
+            x = (z+1383)/5.3;
+            
+           elseif branch == 1 %branch1
+            x = (z+40)/1.6;
            end
         end
         
@@ -1087,11 +1099,12 @@ classdef LinearMaze < handle
             %right side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.556 + 493;
+            x = z/1.6 + 493;
            elseif branch == 2 %branch 2 
-                
-           elseif branch == 1 %branch 3
-                
+            x = (z+423)/1.5;
+           
+           elseif branch == 1 %branch 1
+            x = (z+45.33)/1.1;
            end
         end
         
