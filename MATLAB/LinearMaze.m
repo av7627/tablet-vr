@@ -40,8 +40,11 @@
 
 % 2017-12-13. Leonardo Molina.
 % 2018-05-25. Leonardo Molina.
+%2018-05-26+. Anil Verman.
+
 classdef LinearMaze < handle
     %%
+    
     properties
         % properties of the class
         
@@ -157,6 +160,8 @@ classdef LinearMaze < handle
         % figureHandle - UI handle to control figure.
         figureHandle
        
+        newGUI_figurehandle;
+        
         choosebranch_h;
         
         tempMovieMode_h;
@@ -211,7 +216,7 @@ classdef LinearMaze < handle
         
         com 
         
-        csvDataTable %holds info from csv preset
+        csvDataTable  %holds info from csv preset
         
 %         %these all hold the value of where the x coordinate of the branch
 %         %walls to the left or right side
@@ -220,6 +225,7 @@ classdef LinearMaze < handle
 %         right_leftwall %right branch
 %         right_rightwall
 
+        
         
         
     end
@@ -255,6 +261,7 @@ classdef LinearMaze < handle
             
             %obj.hardware = hardware
             
+            %newGUI_figurehandle = newGUI;
             
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
@@ -442,7 +449,16 @@ classdef LinearMaze < handle
             
             set(obj.stimSize_h, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
             %obj.stimThickness() 
+            
+            
+            %this is how to change things in the app
+            %obj.newGUI_figurehandle.debugEditField.Value = 'hi this is example'; 
            
+           
+            
+            
+            
+            
             set(obj.textBox_stimRotation_h, 'String', currentValues(5)) %change stim orientation
             %obj.textRotation()
             
@@ -467,11 +483,13 @@ classdef LinearMaze < handle
 
         end
         
-        function stimThickness(obj)
+        function stimThickness(obj,value)
             % This function overwrites csvdatatable with manual input for Next trial's preset stim spatial freq
 
-            obj.csvDataTable{obj.trial+1:end,4} = obj.stimSize_h.Value; %index is the 4nd column.
+            obj.csvDataTable{obj.trial+1:end,4} = value; %obj.stimSize_h.Value; %index is the 4nd column.
         end
+        
+        
         
         function textRotation(obj)
            % This function overwrites csvdatatable with manual input for Next trial's preset stim orientation
@@ -553,6 +571,11 @@ classdef LinearMaze < handle
         end
         
         %%
+        function RecieveAppHandle(obj,appHandle)
+            obj.newGUI_figurehandle = appHandle; %this is the handle for the app. to set values from CSV
+            %obj.newGUI_figurehandle.debugEditField.Value
+        end
+        
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
@@ -1056,6 +1079,15 @@ classdef LinearMaze < handle
     end
     %% Walls and export log file
     methods (Static)
+        
+        
+%         function stimThickness_GUIDE(value)
+%             % This function overwrites csvdatatable with manual input for Next trial's preset stim spatial freq
+% 
+%             %obj.csvDataTable{obj.trial+1:end,4} = value; %index is the 4nd column.
+%             LinearMaze.stimThickness(value)
+%         end
+%         
         function x = left_leftwall(z,branch)
             %left side of left branch
            if branch == 3 %branch 3
