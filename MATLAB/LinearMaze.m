@@ -239,7 +239,7 @@ classdef LinearMaze < handle
         programVersion = '20180525';
         
         
-        hardware =2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
+        hardware =0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
         csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
@@ -335,7 +335,7 @@ classdef LinearMaze < handle
             h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
             
             h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text above', 'Callback', @(~, ~)obj.onLogButton());
-            %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+            h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
             h(5) = uicontrol('Style', 'Edit');
             
             h(6) = uicontrol('Style', 'popup',...
@@ -358,12 +358,12 @@ classdef LinearMaze < handle
             h(12) = uicontrol('Style', 'popup',...
                'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'},'Callback',@(~, ~)obj.ManualGratingSide()); 
            
-            h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
-            %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-            h(14) = uicontrol('Style', 'Edit');
+%             h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
+%             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+%             h(14) = uicontrol('Style', 'Edit');
            
-            h(15) = uicontrol('Style', 'popup',...
-               'String', {'Grating:Thick', 'Grating:Thin'},'Callback', @(~, ~)obj.stimThickness()); 
+%             h(15) = uicontrol('Style', 'popup',...
+%                'String', {'Grating:Thick', 'Grating:Thin'},'Callback', @(~, ~)obj.stimThickness()); 
            
             p = get(h(1), 'Position');
             set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
@@ -379,8 +379,8 @@ classdef LinearMaze < handle
             obj.choiceDistance_h = h(11);
             obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
             obj.gratingSide_h = h(12);
-            obj.textBox_stimRotation_h = h(14);
-            obj.stimSize_h = h(15);
+            %obj.textBox_stimRotation_h = h(14);
+            %obj.stimSize_h = h(15);
             
             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
             
@@ -397,7 +397,7 @@ classdef LinearMaze < handle
             obj.nodes.register('Node', @obj.onNode);
 
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
-            obj.updateFromCSV(); %update variables with csv file values
+            
             
             obj.currentBranch = obj.csvDataTable.BranchNum(1);
             
@@ -435,32 +435,31 @@ classdef LinearMaze < handle
         
         %% these functions are for the GUI
         
+        function RecieveAppHandle(obj,appHandle)
+            obj.newGUI_figurehandle = appHandle; %this is the handle for the app. to set values from CSV
+            %obj.newGUI_figurehandle.debugEditField.Value
+            
+            obj.updateFromCSV(); %update variables with csv file values
+        end
+        
         function updateFromCSV(obj)
             currentValues = obj.csvDataTable{obj.trial,:}; %Trial	BranchNum	stim(on/off)	Spacial Freq (stim)	orientation (stim)	Reward Side	side (movie mode)	steering type (movie/wheel)	speed	distance from split turn on steering ([1,2,3,4]/4)	logText
        
-            
-            
-            
             set(obj.choosebranch_h, 'Value', currentValues(2)) %change branchNum
             %obj.chooseBranch() 
             
             set(obj.gratingSide_h, 'Value', currentValues(3)) %change stim side
            
             
-            set(obj.stimSize_h, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
-            %obj.stimThickness() 
+            %set(obj.stimSize_h, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
+            %obj.stimThickness() %switched to new GUI
+            obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Items{currentValues(4)};
             
-            
-            %this is how to change things in the app
-            %obj.newGUI_figurehandle.debugEditField.Value = 'hi this is example'; 
-           
-           
-            
-            
-            
-            
-            set(obj.textBox_stimRotation_h, 'String', currentValues(5)) %change stim orientation
+        
+            %set(obj.textBox_stimRotation_h, 'String', currentValues(5))
+            %change stim orientation % switched to new GUI
             %obj.textRotation()
+            obj.newGUI_figurehandle.EnterRotationEditField.Value = currentValues(5);
             
             set(obj.movieDirection_h, 'Value', currentValues(6)) %change moviemode direction
             
@@ -491,10 +490,10 @@ classdef LinearMaze < handle
         
         
         
-        function textRotation(obj)
+        function textRotation(obj,rotation)
            % This function overwrites csvdatatable with manual input for Next trial's preset stim orientation
 
-            obj.csvDataTable{obj.trial+1:end,5} = str2double(obj.textBox_stimRotation_h.String); %index is the 5th column.
+            obj.csvDataTable{obj.trial+1:end,5} = rotation; %str2double(obj.textBox_stimRotation_h.String); %index is the 5th column.
 
         end
         
@@ -570,11 +569,26 @@ classdef LinearMaze < handle
             obj.print('note,stop');
         end
         
-        %%
-        function RecieveAppHandle(obj,appHandle)
-            obj.newGUI_figurehandle = appHandle; %this is the handle for the app. to set values from CSV
-            %obj.newGUI_figurehandle.debugEditField.Value
+        function delete(obj)
+            % LinearMaze.delete()
+            % Release all resources.
+            
+            obj.treadmill.trigger = false;
+            delete(obj.treadmill);
+            delete(obj.scheduler);
+            delete(obj.nodes);
+            delete(obj.sender);
+            obj.log('note,delete');
+            fclose(obj.fid);
+            LinearMaze.export(obj.filename);
+            if ishandle(obj.figureHandle)
+                set(obj.figureHandle, 'DeleteFcn', []);
+                delete(obj.figureHandle);
+            end
         end
+        
+        %%
+        
         
         function blank(obj, duration)
             % LinearMaze.pause(duration)
@@ -635,23 +649,7 @@ classdef LinearMaze < handle
         
         
         
-        function delete(obj)
-            % LinearMaze.delete()
-            % Release all resources.
-            
-            obj.treadmill.trigger = false;
-            delete(obj.treadmill);
-            delete(obj.scheduler);
-            delete(obj.nodes);
-            delete(obj.sender);
-            obj.log('note,delete');
-            fclose(obj.fid);
-            LinearMaze.export(obj.filename);
-            if ishandle(obj.figureHandle)
-                set(obj.figureHandle, 'DeleteFcn', []);
-                delete(obj.figureHandle);
-            end
-        end
+        
         
         function log(obj, format, varargin)
             % LinearMaze.log(format, arg1, arg2, ...)
@@ -800,16 +798,20 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
             
             
-            if obj.stimSize_h.Value == 1 %thick
-                obj.stimSize_string = 'Thick';
-            else %thin
-                obj.stimSize_string = 'Thin';
-            end
+%             if obj.stimSize_h.Value == 1 %thick            
+%                 obj.stimSize_string = 'Thick';
+%             else %thin
+%                 obj.stimSize_string = 'Thin';
+%             end
+            obj.stimSize_string = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value; %get spatial freq from APP
+            obj.stimRot = obj.newGUI_figurehandle.EnterRotationEditField.Value+90;% get rotation from APP %str2double(obj.textBox_stimRotation_h.String)+90;
+             
+            %set rotation of current branches stimuli
+            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.choosebranch_h.Value) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses)
+            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses)
             
-            obj.stimRot = str2double(obj.textBox_stimRotation_h.String)+90;
-             %set rotation of current branches stimuli
-             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.choosebranch_h.Value) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses);
-             obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses);
+             
+             
              
             %set the stimulus
             side = obj.gratingSide_h.Value;
@@ -818,10 +820,10 @@ classdef LinearMaze < handle
             end
             
             if side == 2 %left
-                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGrating', obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'RightGray,1;'), obj.addresses);
             elseif side == 3%right
-                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'RightGrating',obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.choosebranch_h.Value) ,'LeftGray,1;'), obj.addresses);
             
             end
