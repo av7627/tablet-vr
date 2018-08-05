@@ -49,10 +49,10 @@ classdef LinearMaze < handle
         % properties of the class
         
         % intertrialBehavior - Whether to permit behavior during an intertrial.
-        intertrialBehavior = false;
+        intertrialBehavior = true;
         
         % intertrial - Duration (s) of an intertrial when last node is reached.
-        intertrialDuration = 0;
+        intertrialDuration = 2;
         
         % logOnChange - Create a log entry with every change in position or rotation.
         logOnChange = false;
@@ -181,6 +181,8 @@ classdef LinearMaze < handle
         textBox_stimRotation_h %handle to textbox
         stimRot = 90 %variable holding current grating rotation. 90deg here is 0deg in unity.
         
+        steeringLength %variable for length of straightaway inactive
+        
         stimSize_h %which stimulus size to show. default: thick
         stimSize_string = 'Thick' %variable changed by stimSize_h handle. default: thick
         %%
@@ -239,7 +241,7 @@ classdef LinearMaze < handle
         programVersion = '20180525';
         
         
-        hardware =0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
+        hardware = 2;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
         csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
@@ -308,6 +310,10 @@ classdef LinearMaze < handle
             obj.print('treadmill-version,%s', ArduinoTreadmill.programVersion);
             obj.print('filename,%s', obj.filename);
             
+            %print categories in log file
+            obj.log('type,frame,step,distance,yaw,nodesP1,nodesP2');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
+            
+            
             % Show blank.
             obj.sender.send('enable,Blank,1;', obj.addresses);
             
@@ -329,66 +335,68 @@ classdef LinearMaze < handle
             
             
             % Release resources when the figure is closed.
-            obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
-            h(1) = uicontrol('Style', 'PushButton', 'String', 'Stop',  'Callback', @(~, ~)obj.stop());
-            h(2) = uicontrol('Style', 'PushButton', 'String', 'Start', 'Callback', @(~, ~)obj.start());
-            h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
-            
-            h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text above', 'Callback', @(~, ~)obj.onLogButton());
-            h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-            h(5) = uicontrol('Style', 'Edit');
-            
-            h(6) = uicontrol('Style', 'popup',...
-               'String', {'branch1', 'branch2','branch3'},...
-               'Callback', @(~,~)obj.chooseBranch());
-                         
-            h(7) = uicontrol('Style', 'PushButton', 'String', 'SetSpeed above (default:25)', 'Callback', @(~, ~)obj.textSpeed());
-            %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-            h(8) = uicontrol('Style', 'Edit');
-                         
-            h(9) = uicontrol('Style', 'popup',...
-               'String', {'(DoesntWork)steering on', '(DoesntWork)tempMovieMode'},...
-               'Callback', @(~,~)obj.tempMovie()); %broken dont use. may take out 
-       
-            h(10) = uicontrol('Style', 'popup',...
-               'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'},'Callback', @(~,~)obj.ManualDirection()); 
-            h(11) = uicontrol('Style', 'popup',...
-               'String', {'steeringoff:4/4', 'steeringoff:3/4','steeringoff:2/4','steeringoff:1/4'},'Callback', @(~,~)obj.tempMovie()); 
-
-%             h(12) = uicontrol('Style', 'popup',...
-%                'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'},'Callback',@(~, ~)obj.ManualGratingSide()); 
-%            
-%             h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
+%             obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
+%             h(1) = uicontrol('Style', 'PushButton', 'String', 'Stop',  'Callback', @(~, ~)obj.stop());
+%             h(2) = uicontrol('Style', 'PushButton', 'String', 'Start', 'Callback', @(~, ~)obj.start());
+%             h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
+%             
+%             h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text above', 'Callback', @(~, ~)obj.onLogButton());
+%             h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+%             h(5) = uicontrol('Style', 'Edit');
+%             
+%             h(6) = uicontrol('Style', 'popup',...
+%                'String', {'branch1', 'branch2','branch3'},...
+%                'Callback', @(~,~)obj.chooseBranch());
+%                          
+%             h(7) = uicontrol('Style', 'PushButton', 'String', 'SetSpeed above (default:25)', 'Callback', @(~, ~)obj.textSpeed());
 %             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-%             h(14) = uicontrol('Style', 'Edit');
-           
-%             h(15) = uicontrol('Style', 'popup',...
-%                'String', {'Grating:Thick', 'Grating:Thin'},'Callback', @(~, ~)obj.stimThickness()); 
-           
-            p = get(h(1), 'Position');
-            %set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
-            %set(h(8:14), 'Position', [300+p(1),p(2), 4 * p(3), p(4)]);
-            align(h, 'Left', 'Fixed', 0.5 * p(1));
-            %align(h(8:14), 'Right', 'Fixed', 0.5 * p(1));
-            
-            obj.textBox_h = h(5);
-            obj.choosebranch_h = h(6);
-%             obj.textBox_speed_h = h(8);
-            obj.tempMovieMode_h = h(9);
-            obj.movieDirection_h = h(10);
-            obj.choiceDistance_h = h(11);
-            obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
-            %obj.gratingSide_h = h(12);
-            %obj.textBox_stimRotation_h = h(14);
-            %obj.stimSize_h = h(15);
-            
-            set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
-            
+%             h(8) = uicontrol('Style', 'Edit');
+%                          
+%             h(9) = uicontrol('Style', 'popup',...
+%                'String', {'(DoesntWork)steering on', '(DoesntWork)tempMovieMode'},...
+%                'Callback', @(~,~)obj.tempMovie()); %broken dont use. may take out 
+%        
+%             h(10) = uicontrol('Style', 'popup',...
+%                'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'},'Callback', @(~,~)obj.ManualDirection()); 
+%             h(11) = uicontrol('Style', 'popup',...
+%                'String', {'steeringoff:4/4', 'steeringoff:3/4','steeringoff:2/4','steeringoff:1/4'},'Callback', @(~,~)obj.tempMovie()); 
+% 
+% %             h(12) = uicontrol('Style', 'popup',...
+% %                'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'},'Callback',@(~, ~)obj.ManualGratingSide()); 
+% %            
+% %             h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
+% %             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
+% %             h(14) = uicontrol('Style', 'Edit');
+%            
+% %             h(15) = uicontrol('Style', 'popup',...
+% %                'String', {'Grating:Thick', 'Grating:Thin'},'Callback', @(~, ~)obj.stimThickness()); 
+%            
+%             p = get(h(1), 'Position');
+%             %set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
+%             %set(h(8:14), 'Position', [300+p(1),p(2), 4 * p(3), p(4)]);
+%             align(h, 'Left', 'Fixed', 0.5 * p(1));
+%             %align(h(8:14), 'Right', 'Fixed', 0.5 * p(1));
+%             
+%             obj.textBox_h = h(5);
+%             obj.choosebranch_h = h(6);
+% %             obj.textBox_speed_h = h(8);
+%             obj.tempMovieMode_h = h(9);
+%             obj.movieDirection_h = h(10);
+%             obj.choiceDistance_h = h(11);
+%             
+%             %obj.gratingSide_h = h(12);
+%             %obj.textBox_stimRotation_h = h(14);
+%             %obj.stimSize_h = h(15);
+%             
+%             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
+%             
             
             
 %             if obj.hardware == 2 (I put this function in onUpdate)
 %                 obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);%if hardware then use steeringPush (maybe combine this with onUpdate)
 %             end
+
+            obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
 
             % Initialize nodes.
             obj.nodes = Nodes();
@@ -471,14 +479,16 @@ classdef LinearMaze < handle
             %obj.textSpeed() 
             obj.newGUI_figurehandle.EnterSpeedEditField.Value = currentValues(8);
             
-            set(obj.choiceDistance_h, 'Value', currentValues(9)) %change distance from split turn on steering ([1, 2, 3, 4]/4)
+            %set(obj.choiceDistance_h, 'Value', currentValues(9)) %change distance from split turn on steering ([1, 2, 3, 4]/4)
+            obj.newGUI_figurehandle.SteeringLengthDropDown.Value = obj.newGUI_figurehandle.SteeringLengthDropDown.Items{currentValues(9)};    
             
+            obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
         end
        
         function chooseBranch(obj,branchNum)
             % This function overwrites the csvfile data table when a manual input is entered
-            obj.csvDataTable{obj.trial+1:end,2} = branchNum; %obj.choosebranch_h.Value; %index is the 2nd column. overwrite branchNum data with this branchNum
-
+            obj.csvDataTable{obj.trial:end,2} = branchNum; %obj.choosebranch_h.Value; %index is the 2nd column. overwrite branchNum data with this branchNum
+            %obj.csvDataTable
         end
         
         function ManualGratingSide(obj,sideNum)
@@ -515,17 +525,17 @@ classdef LinearMaze < handle
             %obj.csvDataTable
         end
         
-        function ManualChoiceDistance(obj)
-             obj.csvDataTable{obj.trial+1:end,9} = obj.choiceDistance_h.Value; %index is the 9nd column.
+        function ManualChoiceDistance(obj,length)
+             obj.csvDataTable{obj.trial+1:end,9} = length;%obj.choiceDistance_h.Value; %index is the 9nd column.
         end
         
         
         function reset(obj)
             % LinearMaze.reset()
-            % Reset trial, position, rotation, frame count and encoder steps.
+            % Reset position, rotation, frame count and encoder steps.
             
             branchNum = find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
-            obj.trial = 1;
+            %obj.trial = 1;
             if obj.hardware == 0
                 obj.nodes.vertices = obj.vertices(branchNum,:);
             elseif obj.hardware == 2
@@ -575,6 +585,16 @@ classdef LinearMaze < handle
             obj.print('note,stop');
         end
         
+        function onButton(obj)
+            % LinearMaze.onLogButton()
+            % Log user text.
+            
+            if ~isempty(obj.newGUI_figurehandle.LogTextEditField.Value)      %obj.textBox_h.String)
+                obj.print('note,%s', obj.newGUI_figurehandle.LogTextEditField.Value);%obj.textBox_h.String);
+                obj.newGUI_figurehandle.LogTextEditField.Value = '';%obj.textBox_h.String = '';
+            end
+        end
+        
         function delete(obj)
             % LinearMaze.delete()
             % Release all resources.
@@ -587,10 +607,13 @@ classdef LinearMaze < handle
             obj.log('note,delete');
             fclose(obj.fid);
             LinearMaze.export(obj.filename);
-            if ishandle(obj.figureHandle)
-                set(obj.figureHandle, 'DeleteFcn', []);
-                delete(obj.figureHandle);
-            end
+            
+%             if ishandle(obj.figureHandle)             %i think this is
+%                                                         for the old gui
+%                 set(obj.figureHandle, 'DeleteFcn', []);
+%                 delete(obj.figureHandle);
+%             end
+            
         end
         
         %%
@@ -605,7 +628,9 @@ classdef LinearMaze < handle
             Objects.delete(obj.blankId);
             if duration == 0
                 obj.sender.send('enable,Blank,0;', obj.addresses);
+                obj.enabled = true;
             elseif duration > 0
+                obj.enabled = false;
                 obj.sender.send('enable,Blank,1;', obj.addresses);
                 obj.blankId = obj.scheduler.delay({@obj.blank, 0}, duration);
             end
@@ -629,7 +654,7 @@ classdef LinearMaze < handle
         function speed = get.speed(obj)
             %if ~isempty(obj.textBox_speed_h.String) %obj.newGUI_figurehandle.EnterSpeedEditField.Value
                  if obj.hardware == 0%movie
-                    obj.mSpeed = obj.newGUI_figurehandle.EnterSpeedEditField.Value; %str2double(obj.textBox_speed_h.String);
+                    obj.mSpeed = obj.csvDataTable{obj.trial,8};%obj.newGUI_figurehandle.EnterSpeedEditField.Value; %str2double(obj.textBox_speed_h.String);
                     %obj.mSpeed = obj.csvDataTable{obj.trial,8};
                  %else%steering - gets handled in onupdate
                  %   obj.steeringPushfactor = str2double(obj.textBox_speed.String);
@@ -662,6 +687,7 @@ classdef LinearMaze < handle
             % Create a log entry using the same syntax as sprintf.
             
             fprintf(obj.fid, '%.2f,%s\n', toc(obj.startTime), sprintf(format, varargin{:}));
+            
         end
         
         function pause(obj, duration)
@@ -722,17 +748,56 @@ classdef LinearMaze < handle
             %this is how to change and update a popupmenu in GUI:
 %             set(obj.choosebranch_h, 'Value', 2)
 %             obj.chooseBranch()
+           
+            %this if else statement does not work when stim or movieside is
+            %  'random'
+            if obj.hardware == 2
+                
+                if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.csvDataTable{obj.trial,3} == 2 %left
+                    %correct
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.intertrialDuration = 1;
+                elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.csvDataTable{obj.trial,3} == 3%right
+                    %correct
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.intertrialDuration = 1;
+                else
+                    %incorrect
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
+                    obj.intertrialDuration = 3;
+                end
+            else%hardware off
+                if obj.csvDataTable{obj.trial,3} == 2 &&  obj.csvDataTable{obj.trial,6} == 2         %left
+                    %correct
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.intertrialDuration = 1;
+                elseif obj.csvDataTable{obj.trial,3} == 3 &&  obj.csvDataTable{obj.trial,6} == 3     %right
+                    %correct
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.intertrialDuration = 1;
+                else
+                    %incorrect
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
+                    obj.intertrialDuration = 3;
+                end
+            end
 
+            
             obj.trial = obj.trial + 1;
+
+                                 
+            obj.steeringLength = obj.csvDataTable{obj.trial,9};%find(strcmp(obj.newGUI_figurehandle.SteeringLengthDropDown.Items,obj.newGUI_figurehandle.SteeringLengthDropDown.Value));
+            
+            
             
             obj.updateFromCSV() %update input values from csv file
 
-            obj.currentBranch = find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
+            obj.currentBranch = obj.csvDataTable{obj.trial,2};%find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
             
             %if movie mode, and random then switch the final node randomly
             %left or right
             if obj.hardware == 0  %if not using steering 
-                rand = find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
+                rand = obj.csvDataTable{obj.trial,6};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
                 
                 if rand == 1
                     rand = randi([2 3]); %round(rand)+2%2 or 3
@@ -885,7 +950,7 @@ classdef LinearMaze < handle
             
             % Log changes including frame count and rotary encoder changes.
             
-            % this following if statement gives problems for some reason
+            
             if obj.logOnFrame
                 obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f', frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
             end
@@ -901,15 +966,7 @@ classdef LinearMaze < handle
             obj.newTrial();
         end
         
-        function onLogButton(obj)
-            % LinearMaze.onLogButton()
-            % Log user text.
-            
-            if ~isempty(obj.textBox_h.String)
-                obj.print('note,%s', obj.textBox_h.String);
-                obj.textBox_h.String = '';
-            end
-        end
+        
         
         
         
@@ -954,7 +1011,9 @@ classdef LinearMaze < handle
             %steeringWheel        if current posit  is greater than the
             %                    starting posit plus 1/4 2/4 3/4 4/4 of the
             %                    distance from start to split
-            if obj.enabled && obj.vectorPosition(2) > (5-obj.currentBranch)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            
+            
+            if obj.enabled && obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -1040,7 +1099,7 @@ classdef LinearMaze < handle
                         end
                         
                             
-                    elseif obj.vectorPosition(2) >= obj.branchArray(obj.currentBranch,4)%-28
+                    else%if obj.vectorPosition(2) >= obj.branchArray(obj.currentBranch,4)%-28
                         %bound x by function of z
                         if obj.vectorPosition(1) <= obj.branchArray(obj.currentBranch,2)%466 %left path
                             if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2),obj.currentBranch) %too far left
