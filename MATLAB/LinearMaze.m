@@ -325,7 +325,7 @@ classdef LinearMaze < handle
             obj.filename_trial = fullfile(folder, sprintf('%s.csv', session));
             obj.fid_trial = Files.open(obj.filename_trial, 'a');
             
-            % Remember version and session names.
+            % Remember version and session names. for time based log
             obj.startTime = tic;
             obj.className = mfilename('class');
             obj.print('maze-version,%s-%s', obj.className, LinearMaze.programVersion);
@@ -340,8 +340,8 @@ classdef LinearMaze < handle
             obj.print_trial('filename,%s', obj.filename_trial);
             
             %print categories in log file
-            obj.log('logType,frame,EncoderStep,distanceFromStart ,steering angle,x position,z position');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
-            obj.log_trial('trialNum, correct/incorrect');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
+            obj.log('logType,frame,EncoderStep,distanceFromStart ,yaw,x_movie,z_movie,x_hardware,z_hardware, speed_movie,speed_hardware, branchNum');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
+            obj.log_trial('trialNum, correct/incorrect, stimSide, sideChosen, stim spacialFreq, stim orientation, branchNum, hardware on/off, distanceBeginSteering');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
             
             
             % Show blank.
@@ -878,18 +878,28 @@ classdef LinearMaze < handle
            
             %this if else statement does not work when stim or movieside is
             %  'random'
+            
             correctness = 1;
             if obj.hardware == 2
+                if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2)
+                    sidechosen = 'left';
+                else
+                    sidechosen = 'right';
+                end
                 
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 2    %left
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
                     obj.intertrialDuration = 1;
+                    obj.treadmill.reward(obj.rewardDuration);
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
                     obj.intertrialDuration = 1;
+                    obj.treadmill.reward(obj.rewardDuration);
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
                 else
                     %incorrect
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
@@ -897,11 +907,18 @@ classdef LinearMaze < handle
                     correctness = 0;
                 end
             else%hardware off
-               
+                if obj.nodes.yaw < 0
+                    sidechosen = 'left';
+                else
+                    sidechosen = 'right';
+                end
+                
                 if obj.nodes.yaw < 0 && obj.ActualSide == 2          %left
                     %correct
+                    
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
                     obj.intertrialDuration = 1;
+                    
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
@@ -913,10 +930,16 @@ classdef LinearMaze < handle
                     correctness = 0;
                 end
             end
-
             
+            %log last trial
+            obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+            obj.log_trial('%i,%i,%i,%s,%s,%.2f,%i,%i,%i', obj.trial,correctness,obj.ActualSide,sidechosen,obj.stimSize_string,obj.stimRot-90,obj.currentBranch,obj.hardware,obj.steeringLength); 
+            
+            obj.print('trial,%i', obj.trial);
+      
             obj.trial = obj.trial + 1;
 
+            
             try  %this makes a black screen whenever the end of the preset csv file has been reached                
                 obj.steeringLength = obj.csvDataTable{obj.trial,9};%find(strcmp(obj.newGUI_figurehandle.SteeringLengthDropDown.Items,obj.newGUI_figurehandle.SteeringLengthDropDown.Value));
             catch
@@ -1042,8 +1065,7 @@ classdef LinearMaze < handle
             
                 
             
-            obj.treadmill.reward(obj.rewardDuration);
-            %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+            
             
             % Disable movement and show blank screen for the given duration.
             if obj.intertrialBehavior
@@ -1052,10 +1074,7 @@ classdef LinearMaze < handle
                 obj.pause(obj.intertrialDuration);
             end
             
-            obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
-            obj.log_trial('%i,%i', obj.trial-1,correctness);
             
-            obj.print('trial,%i', obj.trial);
         end
         %%
         function onBridge(obj, connected)
@@ -1077,7 +1096,7 @@ classdef LinearMaze < handle
                 obj.addresses);
             
             if obj.logOnChange
-                obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, distance, yaw, position(1), position(2));
+                obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, distance, yaw, position(1), position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             end
         end
         
@@ -1090,7 +1109,7 @@ classdef LinearMaze < handle
             
             
             if obj.logOnFrame
-                obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f', frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
+                obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             end
             
             % Change the name to reflect frame number.
@@ -1151,7 +1170,7 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-            if obj.enabled && obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            if obj.enabled & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -1272,7 +1291,7 @@ classdef LinearMaze < handle
 %             obj.nodes.position(2)
             
             if obj.logOnUpdate
-                str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2));
+                str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
                 if ~strcmp(str, obj.update)
                     obj.update = str;
                     obj.log(str);
