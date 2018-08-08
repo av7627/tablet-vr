@@ -704,6 +704,14 @@ classdef LinearMaze < handle
             end
         end
         
+        function ManualReward(obj)
+           %send pulse to water pump
+           
+           obj.treadmill.reward(obj.rewardDuration);
+           obj.log('note,reward');
+          
+        end
+        
         function delete(obj)
             % LinearMaze.delete()
             % Release all resources.
@@ -893,6 +901,7 @@ classdef LinearMaze < handle
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    obj.log('note,reward');
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
@@ -900,6 +909,7 @@ classdef LinearMaze < handle
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    obj.log('note,reward');
                 else
                     %incorrect
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
@@ -918,11 +928,17 @@ classdef LinearMaze < handle
                     
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
                     obj.intertrialDuration = 1;
+                    obj.treadmill.reward(obj.rewardDuration);
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    obj.log('note,reward');
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
                     obj.intertrialDuration = 1;
+                    obj.treadmill.reward(obj.rewardDuration);
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    obj.log('note,reward');
                 else
                     %incorrect
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
@@ -1221,9 +1237,9 @@ classdef LinearMaze < handle
         function onUpdate(obj)
             % LinearMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
-             
+             %tic
                 
-                if obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
+                if obj.hardware == 0 && obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
                 elseif obj.hardware == 2 && obj.enabled %hardware on, obj enabled
@@ -1241,55 +1257,49 @@ classdef LinearMaze < handle
                     
                     obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
                     obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
-                
+                    
+                    x_coord = obj.vectorPosition(1);
+                    y_coord = obj.vectorPosition(2);
                     
                 
                     %----------------------------------------------------------------------------
                     
-                             
-                    if obj.vectorPosition(2)< obj.branchArray(obj.currentBranch,4)%-28 %on straight path
+                             %this ifelse is the walls
+                    if y_coord < obj.branchArray(obj.currentBranch,4)%-28 %on straight path
                         %bound x by [457, 475]
-                        if obj.vectorPosition(1) < obj.branchArray(obj.currentBranch,1) %457 too far left
+                        if x_coord < obj.branchArray(obj.currentBranch,1) %457 too far left
                             obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,1);
-                        elseif obj.vectorPosition(1) > obj.branchArray(obj.currentBranch,3) %475 %too far right
+                        elseif x_coord > obj.branchArray(obj.currentBranch,3) %475 %too far right
                             obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,3);
                         end
                         
                             
                     else%if obj.vectorPosition(2) >= obj.branchArray(obj.currentBranch,4)%-28
                         %bound x by function of z
-                        if obj.vectorPosition(1) <= obj.branchArray(obj.currentBranch,2)%466 %left path
-                            if obj.vectorPosition(1) < obj.left_leftwall(obj.vectorPosition(2),obj.currentBranch) %too far left
-                                obj.vectorPosition(1) = obj.left_leftwall(obj.vectorPosition(2),obj.currentBranch);%function of z
-                            elseif obj.vectorPosition(1) > obj.left_rightwall(obj.vectorPosition(2),obj.currentBranch) %too far right
-                                obj.vectorPosition(1) = obj.left_rightwall(obj.vectorPosition(2),obj.currentBranch); %function of z
+                        if x_coord <= obj.branchArray(obj.currentBranch,2)%466 %left path
+                            if x_coord < obj.left_leftwall(y_coord,obj.currentBranch) %too far left
+                                obj.vectorPosition(1) = obj.left_leftwall(y_coord,obj.currentBranch);%function of z
+                            elseif x_coord > obj.left_rightwall(y_coord,obj.currentBranch) %too far right
+                                obj.vectorPosition(1) = obj.left_rightwall(y_coord,obj.currentBranch); %function of z
                             end
-                        elseif obj.vectorPosition(1) > obj.branchArray(obj.currentBranch,2)%466 %right path
-                            if obj.vectorPosition(1) < obj.right_leftwall(obj.vectorPosition(2),obj.currentBranch) %too far left
-                                obj.vectorPosition(1) = obj.right_leftwall(obj.vectorPosition(2),obj.currentBranch);%function of z
-                            elseif obj.vectorPosition(1) > obj.right_rightwall(obj.vectorPosition(2),obj.currentBranch) %too far right
-                                obj.vectorPosition(1) = obj.right_rightwall(obj.vectorPosition(2),obj.currentBranch); %function of z
+                        else%if x_coord > obj.branchArray(obj.currentBranch,2)%466 %right path
+                            if x_coord < obj.right_leftwall(y_coord,obj.currentBranch) %too far left
+                                obj.vectorPosition(1) = obj.right_leftwall(y_coord,obj.currentBranch);%function of z
+                            elseif x_coord > obj.right_rightwall(y_coord,obj.currentBranch) %too far right
+                                obj.vectorPosition(1) = obj.right_rightwall(y_coord,obj.currentBranch); %function of z
                             end
                         end
                     end
                     %---------------------------------------------------------------------------------
-                        
-                 end
-                
-             %obj.vectorPosition
+                         %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
-             if obj.vectorPosition(2) > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
-                    %obj.vectorPosition(1:2) = obj.vertices(1:2); 
-                    obj.newTrial();
-             end  
-             
-%             obj.treadmill.frame
-%             obj.treadmill.step
-%             %obj.nodes.distance
-%             obj.nodes.yaw
-%             obj.nodes.position(1)
-%             obj.nodes.position(2)
-            
+                     if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
+
+                            obj.newTrial();
+                     end  
+                     
+                 end
+        
             if obj.logOnUpdate
                 str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
                 if ~strcmp(str, obj.update)
@@ -1298,7 +1308,8 @@ classdef LinearMaze < handle
                 end
                 
             end
-            
+            %toc
+            %disp(obj.vectorPosition)
         end
         
         
@@ -1323,7 +1334,7 @@ classdef LinearMaze < handle
            elseif branch == 2 %branch 2 
             x = (z-318.5)/(-1.4);
           
-           elseif branch == 1 %branch 1
+           else%if branch == 1 %branch 1
             x = (z + 44.776)/(-.96);
            end
         end
@@ -1336,7 +1347,7 @@ classdef LinearMaze < handle
            elseif branch == 2 %branch 2 
             x = (z-1335)/(-5.33);
           
-           elseif branch == 1 %branch 1
+           else%if branch == 1 %branch 1
             
             x = (z+40)/(-1.3);
            end
@@ -1350,7 +1361,7 @@ classdef LinearMaze < handle
            elseif branch == 2 %branch 2 
             x = (z+1383)/5.3;
             
-           elseif branch == 1 %branch1
+           else%if branch == 1 %branch1
             x = (z+40)/1.6;
            end
         end

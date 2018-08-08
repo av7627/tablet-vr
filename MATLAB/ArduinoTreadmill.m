@@ -1,4 +1,4 @@
-% ArduinoTreadmill(COM)
+%% ArduinoTreadmill(COM)
 % Interface between MATLAB and an Arduino-controlled treadmill.
 % COM is the serial port name of an Arduino running a matching firmware.
 % 
