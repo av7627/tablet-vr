@@ -92,6 +92,9 @@ classdef LinearMaze < handle
         % filename - Name of the log file. - time based
         filename
         
+        
+        stopDuringBlank; %this makes sure that obj is disabled and blank is not turned of during intertrial, if stop(obj) is called
+        
         %name of log file - trial based
         filename_trial
         
@@ -666,6 +669,7 @@ classdef LinearMaze < handle
             % LinearMaze.start()
             % Send high pulse to trigger-out and enable behavior.
             
+            obj.stopDuringBlank = false;
             % Load an existing scene.
             obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
             
@@ -686,6 +690,7 @@ classdef LinearMaze < handle
             % Send low pulse to trigger-out and disable behavior.
             
             % Show blank and disable external devices and behavior.
+            obj.stopDuringBlank = true;
             obj.enabled = false;
             obj.treadmill.trigger = false;
             obj.sender.send('enable,Blank,1;', obj.addresses);
@@ -749,7 +754,7 @@ classdef LinearMaze < handle
             %duration = 0; %hardcode blank to be zero
             
             Objects.delete(obj.blankId);
-            if duration == 0
+            if duration == 0 && ~obj.stopDuringBlank
                 obj.sender.send('enable,Blank,0;', obj.addresses);
                 obj.enabled = true;
             elseif duration > 0
