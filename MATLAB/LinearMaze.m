@@ -271,6 +271,7 @@ classdef LinearMaze < handle
             %commandwindow
             %varargin
             
+            
            
             varargin = varargin{:};
             varargin = strsplit(varargin,',');
@@ -692,6 +693,7 @@ classdef LinearMaze < handle
             %to turn off and on (0 or 1 respectively) objects in Main 
             
             obj.print('note,stop');
+            drawnow;
         end
         
         function onButton(obj)
@@ -1186,27 +1188,30 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-            if obj.enabled & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            if obj.enabled %& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
-                if obj.yRotation >= 180
+                if obj.yRotation > 180
                     obj.yRotation = 180;
-                elseif obj.yRotation <= 0
+                elseif obj.yRotation < 0
                     obj.yRotation = 0;
                 end
                 
-                obj.x_yRotation = cosd(obj.yRotation);
-                obj.z_yRotation = sind(obj.yRotation);
+%                 obj.x_yRotation = cosd(obj.yRotation);%This is done in onupdate now
+%                 obj.z_yRotation = sind(obj.yRotation);
           
 %                 obj.sender.send(sprintf('position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2), ...
 %                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
                 
                 %obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
-                obj.sender.send(Tools.compose([sprintf(...
-                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
-                'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
-                obj.addresses);
+%                 obj.sender.send(Tools.compose([sprintf(...
+%                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+%                 obj.addresses);
+                 obj.sender.send(sprintf(...
+                    'rotation,Main Camera,0,%.2f,0;', obj.yRotation-90 + obj.offsets), ...
+                 obj.addresses);
+
             end
         end
                 
@@ -1242,7 +1247,7 @@ classdef LinearMaze < handle
                 if obj.hardware == 0 && obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
-                elseif obj.hardware == 2 && obj.enabled %hardware on, obj enabled
+                elseif obj.hardware == 2 && obj.enabled  %hardware on, obj enabled
                      
                     obj.sender.send(sprintf(...
                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
@@ -1255,8 +1260,8 @@ classdef LinearMaze < handle
 %                     end
                     obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
                     
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - (cosd(obj.yRotation)*obj.steeringPushfactor);
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + (sind(obj.yRotation)*obj.steeringPushfactor);
                     
                     x_coord = obj.vectorPosition(1);
                     y_coord = obj.vectorPosition(2);
