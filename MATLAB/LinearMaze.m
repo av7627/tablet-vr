@@ -269,7 +269,7 @@ classdef LinearMaze < handle
             %   Provide the serial port name of the treadmill (rotary encoder, pinch valve,
             %   photo-sensor, and lick-sensors assumed connected to an Arduino microcontroller
             %   running a matching firmware).
-            %LinearMaze('com', 'com5','monitors', {'192.168.0.111',0, '192.168.0.109',90,'192.168.0.110',-90,});
+            %LinearMaze(monitors, {192.168.0.111;0; 192.168.0.109;90; 192.168.0.110;-90},hardware,0/2);
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
             %commandwindow
             %varargin
@@ -283,8 +283,8 @@ classdef LinearMaze < handle
             values = varargin(2:2:end);
             k = find(strcmpi(keys, 'hardware'), 1);
             
-            obj.hardware = str2num(values{k});
             
+            obj.hardware = str2num(values{k});
             
             
            % k = find(strcmpi(keys, 'com'), 1);
@@ -301,21 +301,30 @@ classdef LinearMaze < handle
                 obj.com = 'com5';
             end
             
-            
+            %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0
             
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
-                monitors = {'127.0.0.1', 0};
+                monitors = '{127.0.0.1; 0}';
             else
                 monitors = values{k};
             end
+            monitors(1) = []; %get rid of first curly bracket
+            monitors(end) = []; %get rid of last curly bracket
+            monitors = strsplit(monitors,';'); %split on semicolon
             
-                
+            
             
             % Initialize network.
-            obj.addresses = monitors(1:2:end);
-            obj.offsets = [monitors{2:2:end}];
+            i = 2;
+            for nums = 1:length(monitors)/2 %do this for a number of times = to how many monitors connected
+                obj.offsets(i/2) = str2num(monitors{i}); %append the offset number to obj.offsets
+                i = i + 2;
+            end
+            obj.addresses = monitors(1:2:end); %disp(obj.addresses)
             obj.sender = UDPSender(32000);
+            
+            
             
             % Create a log file. Time based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');

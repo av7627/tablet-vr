@@ -172,6 +172,7 @@ classdef CircularMaze < handle
             % Initialize network.
             obj.addresses = monitors(1:2:end);
             obj.offsets = [monitors{2:2:end}];
+            %disp(obj.offsets)
             obj.sender = UDPSender(32000);
             
             % Log file.
