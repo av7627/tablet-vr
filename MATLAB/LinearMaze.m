@@ -64,7 +64,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration = 0.040;
+        rewardDuration =2% 0.040;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -274,7 +274,7 @@ classdef LinearMaze < handle
             %commandwindow
             %varargin
             
-            
+            %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
            
             varargin = varargin{:};
             varargin = strsplit(varargin,',');
@@ -287,21 +287,21 @@ classdef LinearMaze < handle
             obj.hardware = str2num(values{k});
             
             
-           % k = find(strcmpi(keys, 'com'), 1);
-%              if isempty(k)
-%                  obj.com = [];
-%              else
-%                 obj.com = 'com5'; %values{k};
-%              end
+           k = find(strcmpi(keys, 'com'), 1);
+             if isempty(k)
+                 obj.com = [];
+             else
+                obj.com = values{k};
+             end
            
-            if obj.hardware == 0 %no hardware
-                obj.com = [];
-                obj.mSpeed = 25;
-            elseif obj.hardware == 2%hardware on
-                obj.com = 'com5';
-            end
+%             if obj.hardware == 0 %no hardware
+%                 obj.com = [];
+%                 obj.mSpeed = 25;
+%             elseif obj.hardware == 2%hardware on
+%                 obj.com = 'com5';
+%             end
+%             
             
-            %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0
             
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
@@ -456,45 +456,19 @@ classdef LinearMaze < handle
             
             
             obj.updateFromCSV(); %update variables with csv file values
+            set(findall(obj.newGUI_figurehandle.UIFigure, '-property', 'enable'), 'enable', 'on'); %this turns the startup info buttons off
+            set(obj.newGUI_figurehandle.EnterStartupInfoEditField,'Enable','off');
+            set(obj.newGUI_figurehandle.SendButton,'Enable','off');
+            set(obj.newGUI_figurehandle.Label,'Enable','off');
+            
+            obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
 
             
             obj.currentBranch = obj.csvDataTable.BranchNum(1); %set the first branch num
             
             %obj.nodes.vertices = obj.vertices(obj.currentBranch,:); %first update from csv then set the nodal path
             if obj.hardware == 0  %if not using steering 
-                rand = obj.csvDataTable{obj.trial,6};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
-                
-                if rand == 1
-                    rand = randi([2 3]); %round(rand)+2%2 or 3
-                end
-                obj.nodes.vertices = obj.vertices(obj.currentBranch,:);
-                if obj.currentBranch == 1
-  
-                    if rand == 2 %go left
-                        obj.nodes.vertices(end-1) = -35;
-                    elseif rand ==3 %go right
-                       obj.nodes.vertices(end-1) = 35;
-                    end
-                    
-                elseif obj.currentBranch == 2
-                    
-                    
-                    if rand == 2 %go left
-                        obj.nodes.vertices(end-1) = 240;
-                    elseif rand ==3%go right
-                       obj.nodes.vertices(end-1) = 270;
-                    end
-                elseif obj.currentBranch == 3
-                    
-                    
-                    if rand == 2 %go left
-                        obj.nodes.vertices(end-1) = 446;
-                    elseif rand ==3 %go right
-                       obj.nodes.vertices(end-1) = 488;
-                    end
-                end
-                    
-            
+                obj.setNodes_movieMode(); %set path for right or left. movie mode only
             end
             
             obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
@@ -502,58 +476,9 @@ classdef LinearMaze < handle
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
-            %initially turn off all stimulus. turn off thin
-            obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
-            %turn off thick
-            obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
-            %turn off all gray cylinders
-            obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
             
-%             obj.sender.send('enable,Branch1LeftGratingThin,1;', obj.addresses);
-%             obj.sender.send('enable,Branch1RightGratingThin,1;', obj.addresses);
-%             
-%             obj.sender.send(sprintf(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',1;')),obj.addresses)
-%             obj.sender.send(sprintf(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating',obj.stimSize_string,',1')),obj.addresses)
-%             if side == 1 %random
+            obj.setStimulus();%put the stimulus in place with correct rotation
 
-            side = obj.csvDataTable{1,3}; %stim side
-             
-            obj.stimSize_string = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value; %get spatial freq from APP
-            obj.stimRot = obj.newGUI_figurehandle.EnterRotationEditField.Value+90;% get rotation from APP %str2double(obj.textBox_stimRotation_h.String)+90;
-             
-            %set rotation of current branches stimuli
-            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses)
-            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.currentBranch) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses)
-            
-             
-            if side == 1 %random
-                side = randi([2 3]);
-            end
-            obj.ActualSide = side; %to check if side chosen is correct with stimulus side
-            
-            if side == 2 %left
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.stimSize_string,',1;'), obj.addresses);
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
-            elseif side == 3%right
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
-            
-            end
         end
         
         %% these functions are for the GUI
@@ -575,7 +500,7 @@ classdef LinearMaze < handle
             obj.newGUI_figurehandle.BranchNumberDropDown.Value = obj.newGUI_figurehandle.BranchNumberDropDown.Items{currentValues(2)};
              
             %set(obj.gratingSide_h, 'Value', currentValues(3)) %change stim side
-            obj.newGUI_figurehandle.GratingSideDropDown.Value = obj.newGUI_figurehandle.GratingSideDropDown.Items{currentValues(3)};
+            obj.newGUI_figurehandle.GratingSideEditField.Value = currentValues(3);
             %this changes the gui from the value from CSV file
            
             
@@ -590,7 +515,7 @@ classdef LinearMaze < handle
             obj.newGUI_figurehandle.EnterRotationEditField.Value = currentValues(5);
             
             %set(obj.movieDirection_h, 'Value', currentValues(6)) %change moviemode direction
-            obj.newGUI_figurehandle.MovieModeSideDropDown.Value = obj.newGUI_figurehandle.MovieModeSideDropDown.Items{currentValues(6)};
+            obj.newGUI_figurehandle.MovieModeSideEditField.Value =  currentValues(6);%obj.newGUI_figurehandle.MovieModeSideDropDown.Items{currentValues(6)};
             
             %set(obj.textBox_speed_h, 'String', currentValues(8)) %change stim orientation
             %obj.textSpeed() 
@@ -599,12 +524,7 @@ classdef LinearMaze < handle
             %set(obj.choiceDistance_h, 'Value', currentValues(9)) %change distance from split turn on steering ([1, 2, 3, 4]/4)
             obj.newGUI_figurehandle.SteeringLengthDropDown.Value = obj.newGUI_figurehandle.SteeringLengthDropDown.Items{currentValues(9)};    
             
-            set(findall(obj.newGUI_figurehandle.UIFigure, '-property', 'enable'), 'enable', 'on');
-            set(obj.newGUI_figurehandle.EnterStartupInfoEditField,'Enable','off');
-            set(obj.newGUI_figurehandle.SendButton,'Enable','off');
-            set(obj.newGUI_figurehandle.Label,'Enable','off');
             
-            obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
         end
        
         function chooseBranch(obj,branchNum)
@@ -754,7 +674,136 @@ classdef LinearMaze < handle
         end
         
         %%
+        function setStimulus(obj)
+            
+            
+            %initially turn off all stimulus. turn off thin
+            obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
+            %turn off thick
+            obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+            %turn off all gray cylinders
+            obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+            
+            
+%             if obj.stimSize_h.Value == 1 %thick            
+%                 obj.stimSize_string = 'Thick';
+%             else %thin
+%                 obj.stimSize_string = 'Thin';
+%             end
+            obj.stimSize_string = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value; %get spatial freq from APP
+            obj.stimRot = obj.newGUI_figurehandle.EnterRotationEditField.Value+90;% get rotation from APP %str2double(obj.textBox_stimRotation_h.String)+90;
+             
+            %set rotation of current branches stimuli
+            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses)
+            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.currentBranch) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses)
+            
+             
+             
+             
+            %set the stimulus
+            %side = obj.gratingSide_h.Value;
+            preset = obj.csvDataTable{obj.trial,3};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
+                
+            rando = rand();
+            
+            %obj.ActualSide = preset; %this is to see if the side chosen was correct or not for the reward
+            if preset < rando %left
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value ,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
+                obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
+            else%if side == 3%right
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
+                obj.ActualSide = 3;%this is to see if the side chosen was correct or not for the reward
+            end
+            
+        end
         
+        function setNodes_movieMode(obj)
+            %set path left or right for movie mode camera
+            
+            %this is the value of the preset between 0 and 1
+            preset = obj.csvDataTable{obj.trial,6};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
+                
+            rando = rand();
+            
+            obj.nodes.vertices = obj.vertices(obj.currentBranch,:);
+                if obj.currentBranch == 1
+  
+                    if preset < rando 
+                        obj.nodes.vertices(end-1) = -35; %left
+                    else                                  
+                       obj.nodes.vertices(end-1) = 35;%right
+                    end
+                    
+                elseif obj.currentBranch == 2
+                    
+                    
+                    if preset < rando  %go left
+                        obj.nodes.vertices(end-1) = 240;%left
+                    else
+                       obj.nodes.vertices(end-1) = 270;%right
+                    end
+                elseif obj.currentBranch == 3
+                    
+                    
+                    if preset < rando 
+                        obj.nodes.vertices(end-1) = 446;%left
+                    else
+                       obj.nodes.vertices(end-1) = 488;%right
+                    end
+                end
+            
+            
+            
+            
+            
+%                 if rand == 1
+%                     rand = randi([2 3]); %round(rand)+2%2 or 3
+%                 end
+%                 
+%                 obj.nodes.vertices = obj.vertices(obj.currentBranch,:);
+%                 if obj.currentBranch == 1
+%   
+%                     if rand == 2 %go left
+%                         obj.nodes.vertices(end-1) = -35;
+%                     elseif rand ==3 %go right
+%                        obj.nodes.vertices(end-1) = 35;
+%                     end
+%                     
+%                 elseif obj.currentBranch == 2
+%                     
+%                     
+%                     if rand == 2 %go left
+%                         obj.nodes.vertices(end-1) = 240;
+%                     elseif rand ==3%go right
+%                        obj.nodes.vertices(end-1) = 270;
+%                     end
+%                 elseif obj.currentBranch == 3
+%                     
+%                     
+%                     if rand == 2 %go left
+%                         obj.nodes.vertices(end-1) = 446;
+%                     elseif rand ==3 %go right
+%                        obj.nodes.vertices(end-1) = 488;
+%                     end
+%                 end
+        end
         
         function blank(obj, duration)
             % LinearMaze.pause(duration)
@@ -913,7 +962,7 @@ classdef LinearMaze < handle
                 
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 2    %left
                     %correct
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
@@ -921,7 +970,7 @@ classdef LinearMaze < handle
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
@@ -942,7 +991,7 @@ classdef LinearMaze < handle
                 if obj.nodes.yaw < 0 && obj.ActualSide == 2          %left
                     %correct
                     
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
@@ -950,7 +999,7 @@ classdef LinearMaze < handle
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
                     %correct
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct';
+                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
@@ -970,6 +1019,9 @@ classdef LinearMaze < handle
             obj.print('trial,%i', obj.trial);
       
             obj.trial = obj.trial + 1;
+            
+            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
+            
 
             
             try  %this makes a black screen whenever the end of the preset csv file has been reached                
@@ -987,42 +1039,9 @@ classdef LinearMaze < handle
             %if movie mode, and random then switch the final node randomly
             %left or right
             if obj.hardware == 0  %if not using steering 
-                rand = obj.csvDataTable{obj.trial,6};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
-                
-                if rand == 1
-                    rand = randi([2 3]); %round(rand)+2%2 or 3
-                end
-                
-                obj.nodes.vertices = obj.vertices(obj.currentBranch,:);
-                if obj.currentBranch == 1
-  
-                    if rand == 2 %go left
-                        obj.nodes.vertices(end-1) = -35;
-                    elseif rand ==3 %go right
-                       obj.nodes.vertices(end-1) = 35;
-                    end
-                    
-                elseif obj.currentBranch == 2
-                    
-                    
-                    if rand == 2 %go left
-                        obj.nodes.vertices(end-1) = 240;
-                    elseif rand ==3%go right
-                       obj.nodes.vertices(end-1) = 270;
-                    end
-                elseif obj.currentBranch == 3
-                    
-                    
-                    if rand == 2 %go left
-                        obj.nodes.vertices(end-1) = 446;
-                    elseif rand ==3 %go right
-                       obj.nodes.vertices(end-1) = 488;
-                    end
-                end
-                    
-            
-            
-            elseif obj.hardware == 2
+                obj.setNodes_movieMode(); %set path left or right for movie mode camera
+
+            else%obj.hardware == 2
                 
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);
                 obj.yRotation = 90; %reset rotation on new trial
@@ -1037,64 +1056,8 @@ classdef LinearMaze < handle
             end
             
             
-            
-            %initially turn off all stimulus. turn off thin
-            obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
-            obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
-            %turn off thick
-            obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
-            obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
-            %turn off all gray cylinders
-            obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-            obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
-            
-            
-%             if obj.stimSize_h.Value == 1 %thick            
-%                 obj.stimSize_string = 'Thick';
-%             else %thin
-%                 obj.stimSize_string = 'Thin';
-%             end
-            obj.stimSize_string = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value; %get spatial freq from APP
-            obj.stimRot = obj.newGUI_figurehandle.EnterRotationEditField.Value+90;% get rotation from APP %str2double(obj.textBox_stimRotation_h.String)+90;
-             
-            %set rotation of current branches stimuli
-            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',%.2f,-50,90;'), obj.stimRot),obj.addresses)
-            obj.sender.send(sprintf(strcat('rotation,Branch', num2str(obj.currentBranch) ,'LeftGrating',obj.stimSize_string,',%.2f,50,90;'), obj.stimRot),obj.addresses)
-            
-             
-             
-             
-            %set the stimulus
-            %side = obj.gratingSide_h.Value;
-            side = find(strcmp(obj.newGUI_figurehandle.GratingSideDropDown.Items,obj.newGUI_figurehandle.GratingSideDropDown.Value));
-            
-            if side == 1 %random
-                side = randi([2 3]);
-            end
-            obj.ActualSide = side; %this is to see if the side chosen was correct or not for the reward
-            if side == 2 %left
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value ,',1;'), obj.addresses);
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
-            elseif side == 3%right
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value,',1;'), obj.addresses);
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
-            
-            end
-            
-             
-            
+            obj.setStimulus(); %put the stimulus in place with correct rotation
+
                 
             
             
