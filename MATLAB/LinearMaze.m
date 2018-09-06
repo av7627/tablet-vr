@@ -256,7 +256,7 @@ classdef LinearMaze < handle
         
         
         
-        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
+        csvFileName = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\GitHub\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
         
     end
@@ -269,7 +269,7 @@ classdef LinearMaze < handle
             %   Provide the serial port name of the treadmill (rotary encoder, pinch valve,
             %   photo-sensor, and lick-sensors assumed connected to an Arduino microcontroller
             %   running a matching firmware).
-            %LinearMaze(monitors, {192.168.0.111;0; 192.168.0.109;90; 192.168.0.110;-90},hardware,0/2);
+            %LinearMaze(monitors,{192.168.0.111;0;192.168.0.109;90;192.168.0.110;-90},hardware,0/2);
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
             %commandwindow
             %varargin
