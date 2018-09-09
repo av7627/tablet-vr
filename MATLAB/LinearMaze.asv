@@ -721,14 +721,15 @@ classdef LinearMaze < handle
                 
             rando = rand();
             
-            obj.ActualSide = preset; %this is to see if the side chosen was correct or not for the reward
-            if side == 2 %left
+            %obj.ActualSide = preset; %this is to see if the side chosen was correct or not for the reward
+            if preset < rando %left
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
-            elseif side == 3%right
+                obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
+            else%if side == 3%right
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
-            
+                obj.ActualSide = 3;%this is to see if the side chosen was correct or not for the reward
             end
             
         end
@@ -1018,6 +1019,9 @@ classdef LinearMaze < handle
             obj.print('trial,%i', obj.trial);
       
             obj.trial = obj.trial + 1;
+            
+            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
+            
 
             
             try  %this makes a black screen whenever the end of the preset csv file has been reached                

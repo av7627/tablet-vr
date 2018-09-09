@@ -276,14 +276,13 @@ classdef LinearMaze < handle
             
             %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
            
-            varargin = varargin{:};
-            varargin = strsplit(varargin,',');
-            
+            varargin = varargin{:};%convert from cell array to string
+            varargin= varargin(~isspace(varargin));%get rid of spaces
+            varargin = strsplit(varargin,',');%split on commas
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
+            
             k = find(strcmpi(keys, 'hardware'), 1);
-            
-            
             obj.hardware = str2num(values{k});
             
             
@@ -305,7 +304,7 @@ classdef LinearMaze < handle
             
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
-                monitors = '{127.0.0.1; 0}';
+                monitors = '{127.0.0.1;0}';
             else
                 monitors = values{k};
             end
