@@ -256,7 +256,7 @@ classdef LinearMaze < handle
         
         
         
-        csvFileName = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\GitHub\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
+        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
         
     end
@@ -283,7 +283,7 @@ classdef LinearMaze < handle
             values = varargin(2:2:end);
             
             k = find(strcmpi(keys, 'hardware'), 1);
-            obj.hardware = str2num(values{k});
+            obj.hardware = str2num(values{k}); %hardware on/off = 0/2
             
             
            k = find(strcmpi(keys, 'com'), 1);
@@ -301,6 +301,10 @@ classdef LinearMaze < handle
 %             end
 %             
             
+
+
+
+
             
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
@@ -323,8 +327,7 @@ classdef LinearMaze < handle
             obj.addresses = monitors(1:2:end); %disp(obj.addresses)
             obj.sender = UDPSender(32000);
             
-            
-            
+ 
             % Create a log file. Time based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
             session = sprintf('VR_TimeBased%s', datestr(now, 'yyyymmddHHMMSS'));
@@ -367,14 +370,23 @@ classdef LinearMaze < handle
                 obj.treadmill = TreadmillInterface();
                 obj.print('treadmill-version,%s', TreadmillInterface.programVersion);
             else
-                obj.treadmill = ArduinoTreadmill('com5');
+                obj.treadmill = ArduinoTreadmill(obj.com);
                 obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
             end
             obj.treadmill.register('Frame', @obj.onFrame);
             obj.treadmill.register('Step', @obj.onStep);
             obj.treadmill.register('Tape', @obj.onTape);
-            
-            
+            obj.treadmill.register('touchPad', @obj.touchPad);
+                       
+%     Listen for incoming data:
+%       bridge.register('DataReceived', @fcn)
+%       function fcn(data)
+%           fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count);
+%       end
+            %set up listener for sparkfun touch pad:
+%             disp('dick')
+             %obj.treadmill.bridge.register(3,@obj.touchPad); %touchPad(obj) is the callback function for the touchPad
+%             disp('face')
             
             % Release resources when the figure is closed.
 %             obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
@@ -804,6 +816,23 @@ classdef LinearMaze < handle
 %                 end
         end
         
+        
+        function touchPad(obj,data)
+            %     Listen for incoming data:
+%       bridge.register('DataReceived', @fcn)
+%       function fcn(data)
+%           fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count);
+%       end
+%             
+            disp('hi')
+           %fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count); 
+            
+        end
+        
+        
+        
+        
+        
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
@@ -911,6 +940,7 @@ classdef LinearMaze < handle
 %         end
            % end
         
+           
                     
         
         function print(obj, format, varargin)
@@ -1164,7 +1194,7 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-            if obj.enabled %& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 

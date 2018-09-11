@@ -216,7 +216,9 @@ classdef Bridge < Event
             % Bridge.register(pin, callback)
             % Invoke a generic method when a pointer enters a region.
             
+            
             if isnumeric(var)
+
                 pin = var;
                 n = numel(obj.callbackMap) + 1;
                 obj.uid = obj.uid + 1;
