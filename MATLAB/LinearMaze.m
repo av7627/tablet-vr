@@ -64,7 +64,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =2% 0.040;
+        rewardDuration =0.040;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -368,7 +368,7 @@ classdef LinearMaze < handle
                 obj.treadmill = TreadmillInterface();
                 obj.print('treadmill-version,%s', TreadmillInterface.programVersion);
             else
-                obj.treadmill = ArduinoTreadmill('com5');
+                obj.treadmill = ArduinoTreadmill(obj.com);
                 obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
             end
             obj.treadmill.register('Frame', @obj.onFrame);
