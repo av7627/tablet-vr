@@ -58,6 +58,10 @@ classdef ArduinoTreadmill < Event
         % tapePin - Pin for IR sensing reflective tapes.
         tapePin = 15
         
+        %touchPadPin
+        touchPadPin = 7
+        
+        
         % triggerPin - Trigger-out pin to initiate external devices.
         triggerPin = 22
         
@@ -120,10 +124,13 @@ classdef ArduinoTreadmill < Event
                 obj.bridge.getBinary(obj.framePin, 0, 0, 1);
                 obj.bridge.getRotation(obj.encoderPins, 1);
                 obj.bridge.getBinary(obj.tapePin, 0, 0, 1);
+                obj.bridge.getBinary(obj.touchPadPin,5, 0, 1);
+                %obj.bridge.register('touchPad', @fcn)
             end
         end
         
         function onDataReceived(obj, data)
+            
             % Treadmill.onDataReceived(data)
             % Bridge responded with position data.
             switch data.Pin
@@ -148,6 +155,9 @@ classdef ArduinoTreadmill < Event
                     if ~data.State
                         obj.invoke('Tape', obj.change > 0);
                     end
+                case obj.touchPadPin %touchPad
+                    
+                    obj.invoke('touchPad',data);
             end
         end
     end

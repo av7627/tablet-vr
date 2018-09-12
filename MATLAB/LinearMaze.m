@@ -68,8 +68,10 @@ classdef LinearMaze < handle
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
-        rewardTone = [2000, 0.5];
+        rewardTone = [1000, 0.5];
         
+        %errorTone - played when mouse makes a mistake
+        errorTone = [2000, 1];
 
 
         
@@ -113,7 +115,7 @@ classdef LinearMaze < handle
         %vertices of where branch splits or turns
         branchArray = [-5, 0, 5, -40
                    244 ,255, 266, -24 
-                   457,466,475,-28];
+                   459,466,475,-28];
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
@@ -161,7 +163,8 @@ classdef LinearMaze < handle
         
         mSpeed = 0;
         
-         
+        lickCount = 0;  
+        
         steeringPushfactor = 20;
         
         
@@ -256,7 +259,7 @@ classdef LinearMaze < handle
         
         
         
-        csvFileName = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\GitHub\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
+        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
         
     end
@@ -276,15 +279,14 @@ classdef LinearMaze < handle
             
             %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
            
-            varargin = varargin{:};
-            varargin = strsplit(varargin,',');
-            
+            varargin = varargin{:};%convert from cell array to string
+            varargin= varargin(~isspace(varargin));%get rid of spaces
+            varargin = strsplit(varargin,',');%split on commas
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
+            
             k = find(strcmpi(keys, 'hardware'), 1);
-            
-            
-            obj.hardware = str2num(values{k});
+            obj.hardware = str2num(values{k}); %hardware on/off = 0/2
             
             
            k = find(strcmpi(keys, 'com'), 1);
@@ -302,10 +304,14 @@ classdef LinearMaze < handle
 %             end
 %             
             
+
+
+
+
             
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
-                monitors = '{127.0.0.1; 0}';
+                monitors = '{127.0.0.1;0}';
             else
                 monitors = values{k};
             end
@@ -324,8 +330,7 @@ classdef LinearMaze < handle
             obj.addresses = monitors(1:2:end); %disp(obj.addresses)
             obj.sender = UDPSender(32000);
             
-            
-            
+ 
             % Create a log file. Time based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
             session = sprintf('VR_TimeBased%s', datestr(now, 'yyyymmddHHMMSS'));
@@ -374,8 +379,17 @@ classdef LinearMaze < handle
             obj.treadmill.register('Frame', @obj.onFrame);
             obj.treadmill.register('Step', @obj.onStep);
             obj.treadmill.register('Tape', @obj.onTape);
-            
-            
+            obj.treadmill.register('touchPad', @obj.touchPad);
+                       
+%     Listen for incoming data:
+%       bridge.register('DataReceived', @fcn)
+%       function fcn(data)
+%           fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count);
+%       end
+            %set up listener for sparkfun touch pad:
+%             disp('dick')
+             %obj.treadmill.bridge.register(3,@obj.touchPad); %touchPad(obj) is the callback function for the touchPad
+%             disp('face')
             
             % Release resources when the figure is closed.
 %             obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
@@ -805,6 +819,38 @@ classdef LinearMaze < handle
 %                 end
         end
         
+        
+        function touchPad(obj,data)             
+            %this will display on the gui a lick count and log it on time
+            %based log file
+            
+            %fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count); 
+            if data.Count == 0
+                return %this function gets called once at the beginning of the script so return
+                
+            elseif obj.lickCount ~= data.Count %make sure this can only be entered once per lick
+                obj.lickCount = data.Count;
+                %disp('start')
+                
+                obj.newGUI_figurehandle.LickCountNumber.Text = num2str(data.Count); %update GUI
+                
+                %log the Lick
+                obj.log('note,start of lick');
+                
+            else
+                %make a note in the timebased log file that this is the end
+                %of the lick
+                %disp('end')
+                obj.log('note,end of lick');
+                
+            end
+            
+        end
+        
+        
+        
+        
+        
         function blank(obj, duration)
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
@@ -912,6 +958,7 @@ classdef LinearMaze < handle
 %         end
            % end
         
+           
                     
         
         function print(obj, format, varargin)
@@ -964,19 +1011,28 @@ classdef LinearMaze < handle
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
+                    
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    
                     obj.log('note,reward');
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
+                    
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
+                    
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    
                     obj.log('note,reward');
                 else
                     %incorrect
+                    
+                    Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
+                   
+                    
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
@@ -994,7 +1050,7 @@ classdef LinearMaze < handle
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
                     obj.log('note,reward');
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
@@ -1002,10 +1058,13 @@ classdef LinearMaze < handle
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.log('note,reward');
                 else
                     %incorrect
+                    Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
+                   
+                    
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
@@ -1165,7 +1224,7 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-            if obj.enabled %& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -1312,7 +1371,8 @@ classdef LinearMaze < handle
         function x = left_leftwall(z,branch)
             %left side of left branch
            if branch == 3 %branch 3
-            x = z/(-1.75)  +  441;
+            x = z/(-1.75)  +  443;
+            %x = (z-728)*(-0.61);
            elseif branch == 2 %branch 2 
             x = (z-318.5)/(-1.4);
           
@@ -1339,7 +1399,7 @@ classdef LinearMaze < handle
             %left side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.65 + 483;
+            x = z/1.65 + 484.5;
            elseif branch == 2 %branch 2 
             x = (z+1383)/5.3;
             
@@ -1352,7 +1412,7 @@ classdef LinearMaze < handle
             %right side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.6 + 493;
+            x = z/1.6 + 492;
            elseif branch == 2 %branch 2 
             x = (z+423)/1.5;
            
