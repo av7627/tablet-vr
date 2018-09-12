@@ -68,8 +68,10 @@ classdef LinearMaze < handle
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
-        rewardTone = [2000, 0.5];
+        rewardTone = [1000, 0.5];
         
+        %errorTone - played when mouse makes a mistake
+        errorTone = [2000, 1];
 
 
         
@@ -113,7 +115,7 @@ classdef LinearMaze < handle
         %vertices of where branch splits or turns
         branchArray = [-5, 0, 5, -40
                    244 ,255, 266, -24 
-                   457,466,475,-28];
+                   459,466,475,-28];
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
@@ -161,7 +163,8 @@ classdef LinearMaze < handle
         
         mSpeed = 0;
         
-         
+        lickCount = 0;  
+        
         steeringPushfactor = 20;
         
         
@@ -817,15 +820,30 @@ classdef LinearMaze < handle
         end
         
         
-        function touchPad(obj,data)
-            %     Listen for incoming data:
-%       bridge.register('DataReceived', @fcn)
-%       function fcn(data)
-%           fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count);
-%       end
-%             
-            disp('hi')
-           %fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count); 
+        function touchPad(obj,data)             
+            %this will display on the gui a lick count and log it on time
+            %based log file
+            
+            %fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count); 
+            if data.Count == 0
+                return %this function gets called once at the beginning of the script so return
+                
+            elseif obj.lickCount ~= data.Count %make sure this can only be entered once per lick
+                obj.lickCount = data.Count;
+                %disp('start')
+                
+                obj.newGUI_figurehandle.LickCountNumber.Text = num2str(data.Count); %update GUI
+                
+                %log the Lick
+                obj.log('note,start of lick');
+                
+            else
+                %make a note in the timebased log file that this is the end
+                %of the lick
+                %disp('end')
+                obj.log('note,end of lick');
+                
+            end
             
         end
         
@@ -993,19 +1011,28 @@ classdef LinearMaze < handle
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
+                    
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    
                     obj.log('note,reward');
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
+                    
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
+                    
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    
                     obj.log('note,reward');
                 else
                     %incorrect
+                    
+                    Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
+                   
+                    
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
@@ -1023,7 +1050,7 @@ classdef LinearMaze < handle
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
                     obj.log('note,reward');
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
@@ -1031,10 +1058,13 @@ classdef LinearMaze < handle
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
-                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); This makes a reward tone
+                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.log('note,reward');
                 else
                     %incorrect
+                    Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
+                   
+                    
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
@@ -1341,7 +1371,8 @@ classdef LinearMaze < handle
         function x = left_leftwall(z,branch)
             %left side of left branch
            if branch == 3 %branch 3
-            x = z/(-1.75)  +  441;
+            x = z/(-1.75)  +  443;
+            %x = (z-728)*(-0.61);
            elseif branch == 2 %branch 2 
             x = (z-318.5)/(-1.4);
           
@@ -1368,7 +1399,7 @@ classdef LinearMaze < handle
             %left side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.65 + 483;
+            x = z/1.65 + 484.5;
            elseif branch == 2 %branch 2 
             x = (z+1383)/5.3;
             
@@ -1381,7 +1412,7 @@ classdef LinearMaze < handle
             %right side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.6 + 493;
+            x = z/1.6 + 492;
            elseif branch == 2 %branch 2 
             x = (z+423)/1.5;
            
