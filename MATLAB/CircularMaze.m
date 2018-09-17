@@ -386,7 +386,7 @@ classdef CircularMaze < handle
         function onUpdate(obj)
             % CircularMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
-            
+            tic
             if obj.enabled
                 % Move camera around the circle.
                 if obj.speed ~= 0
@@ -398,6 +398,7 @@ classdef CircularMaze < handle
                 if obj.logOnUpdate
                     obj.log('data,%i,%.2f,%.2f,%.2f,%.2f,%.2f', obj.treadmill.frame, obj.treadmill.step, obj.distance, obj.rotation, obj.position(1), obj.position(2));
                 end
+                toc
             end
                 
             % Move cat around a smaller circle.

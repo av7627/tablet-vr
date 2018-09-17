@@ -159,7 +159,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain = 5;
+        mGain = 1;
         
         mSpeed = 0;
         
@@ -1349,8 +1349,8 @@ classdef LinearMaze < handle
                 end
                 
             end
-            %toc
-            %disp(obj.vectorPosition)
+%             linear = toc;%av = 0.001
+%             disp([linear,obj.enabled])%monitors,{192.168.0.11;0},hardware,0
         end
         
         
