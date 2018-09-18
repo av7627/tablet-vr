@@ -707,9 +707,16 @@ classdef LinearMaze < handle
                 set(handle,'ytick',[obj.trial-10:obj.trial]);
             end
             
-            plot(handle, obj.choiceArray ,[1:obj.trial],'o')
+            
+            if obj.choiceArray(obj.trial,2) == 1 %correct
+                plot(handle, obj.choiceArray(obj.trial,1) ,obj.trial,'ok')
                 
-
+            else %incorrect
+                plot(handle, obj.choiceArray(obj.trial,1) ,obj.trial,'xr')
+                
+            end
+                
+                
         end
         
         %%
@@ -1028,10 +1035,10 @@ classdef LinearMaze < handle
             if obj.hardware == 2
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2)
                     sidechosen = 'left';
-                    obj.choiceArray(obj.trial) = 2;
+                    obj.choiceArray(obj.trial,1) = 2; %the mouse went left
                 else
                     sidechosen = 'right';
-                    obj.choiceArray(obj.trial) = 3;
+                    obj.choiceArray(obj.trial,1) = 3;%the mouse went right
                 end
                 
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 2    %left
@@ -1044,6 +1051,8 @@ classdef LinearMaze < handle
                     
                     obj.log('note,reward');
                     
+                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
+                    
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
@@ -1054,6 +1063,8 @@ classdef LinearMaze < handle
                     obj.treadmill.reward(obj.rewardDuration);
                     
                     obj.log('note,reward');
+                    
+                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
                 else
                     %incorrect
                     
@@ -1063,14 +1074,16 @@ classdef LinearMaze < handle
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
+                    
+                    obj.choiceArray(obj.trial,2) = 0; %incorrect side chosen
                 end
             else%hardware off
                 if obj.nodes.yaw < 0
                     sidechosen = 'left';
-                    obj.choiceArray(obj.trial) = 2;
+                    obj.choiceArray(obj.trial,1) = 2;%the mouse went left
                 else
                     sidechosen = 'right';
-                    obj.choiceArray(obj.trial) = 3;
+                    obj.choiceArray(obj.trial,1) = 3;%the mouse went right
                 end
                 
                 if obj.nodes.yaw < 0 && obj.ActualSide == 2          %left
@@ -1081,6 +1094,7 @@ classdef LinearMaze < handle
                     obj.treadmill.reward(obj.rewardDuration);
                     Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
                     obj.log('note,reward');
+                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
                     %correct
@@ -1089,6 +1103,7 @@ classdef LinearMaze < handle
                     obj.treadmill.reward(obj.rewardDuration);
                     Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.log('note,reward');
+                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
                 else
                     %incorrect
                     Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
@@ -1097,6 +1112,8 @@ classdef LinearMaze < handle
                     obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
+                    
+                    obj.choiceArray(obj.trial,2) = 0; %incorrect side chosen
                 end
             end
             
