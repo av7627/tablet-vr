@@ -120,6 +120,9 @@ classdef LinearMaze < handle
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
         
+        %choiceArray - each index is a trial. 1=left,2=right
+        choiceArray = [];
+        
         yRotation = 90; %for rotating the camera for steering
         x_yRotation = 0;
         z_yRotation = 1;
@@ -278,6 +281,7 @@ classdef LinearMaze < handle
             %varargin
             
             %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
+            
            
             varargin = varargin{:};%convert from cell array to string
             varargin= varargin(~isspace(varargin));%get rid of spaces
@@ -473,7 +477,7 @@ classdef LinearMaze < handle
             set(findall(obj.newGUI_figurehandle.UIFigure, '-property', 'enable'), 'enable', 'on'); %this turns the startup info buttons off
             set(obj.newGUI_figurehandle.EnterStartupInfoEditField,'Enable','off');
             set(obj.newGUI_figurehandle.SendButton,'Enable','off');
-            set(obj.newGUI_figurehandle.Label,'Enable','off');
+            %set(obj.newGUI_figurehandle.Label,'Enable','off');
             
             obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
 
@@ -685,6 +689,27 @@ classdef LinearMaze < handle
 %                 delete(obj.figureHandle);
 %             end
             
+        end
+        
+        function MouseChoiceGraph(obj)
+            %add another number to y-axis
+            %add marker to right/left indicating right/wrong
+            %this function gets called in newTrial()
+            handle = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to graph on GUI
+            
+            if obj.trial < 10 %first ten trials
+                ylim(handle,[0 ,obj.trial]);
+                set(handle,'ytick',[1:obj.trial]);
+            else
+                %start taking the lowest trial out of yaxis and adding to
+                %top of yaxis
+                ylim(handle,[obj.trial-10 ,obj.trial]);
+                set(handle,'ytick',[obj.trial-10:obj.trial]);
+            end
+            
+            plot(handle, obj.choiceArray ,[1:obj.trial],'o')
+                
+
         end
         
         %%
@@ -1003,8 +1028,10 @@ classdef LinearMaze < handle
             if obj.hardware == 2
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2)
                     sidechosen = 'left';
+                    obj.choiceArray(obj.trial) = 2;
                 else
                     sidechosen = 'right';
+                    obj.choiceArray(obj.trial) = 3;
                 end
                 
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 2    %left
@@ -1040,8 +1067,10 @@ classdef LinearMaze < handle
             else%hardware off
                 if obj.nodes.yaw < 0
                     sidechosen = 'left';
+                    obj.choiceArray(obj.trial) = 2;
                 else
                     sidechosen = 'right';
+                    obj.choiceArray(obj.trial) = 3;
                 end
                 
                 if obj.nodes.yaw < 0 && obj.ActualSide == 2          %left
@@ -1075,11 +1104,15 @@ classdef LinearMaze < handle
             obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             obj.log_trial('%i,%i,%i,%s,%s,%.2f,%i,%i,%i', obj.trial,correctness,obj.ActualSide,sidechosen,obj.stimSize_string,obj.stimRot-90,obj.currentBranch,obj.hardware,obj.steeringLength); 
             
-            obj.print('trial,%i', obj.trial);
-      
-            obj.trial = obj.trial + 1;
+            obj.print('trial,%i', obj.trial); %print trial in command window and log in file
             
-            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
+            obj.MouseChoiceGraph(); %update the mouseChoiceGraph in GUI
+      
+            obj.trial = obj.trial + 1; %increment the trial number
+            
+            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial); %change trial number in GUI
+            
+            
             
 
             
