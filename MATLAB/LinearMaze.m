@@ -123,6 +123,10 @@ classdef LinearMaze < handle
         %choiceArray - each index is a trial. 1=left,2=right
         choiceArray = [];
         
+        %averageGratingSide - the current ratio of left vs right.
+        %0=left,1=right
+        averageGratingSide;
+        
         yRotation = 90; %for rotating the camera for steering
         x_yRotation = 0;
         z_yRotation = 1;
@@ -170,6 +174,9 @@ classdef LinearMaze < handle
         
         steeringPushfactor = 20;
         
+        %this is used in MouseChoiceGraph to get the average grating side
+        %0=left,1=right.Index is trial number.
+        gratingSideArray = [];
         
         %% UI hadles
         % figureHandle - UI handle to control figure.
@@ -206,7 +213,7 @@ classdef LinearMaze < handle
         
         %this is to check check where the stimulus actually went, because
         %random cant be checked in the csv file
-        ActualSide
+        ActualSide;
         
         % offsets - Monitor rotation offset listed under monitors.
         offsets
@@ -277,8 +284,6 @@ classdef LinearMaze < handle
             %   running a matching firmware).
             %LinearMaze(monitors,{192.168.0.111;0;192.168.0.109;90;192.168.0.110;-90},hardware,0/2);
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
-            %commandwindow
-            %varargin
             
             %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
             
@@ -697,25 +702,34 @@ classdef LinearMaze < handle
             %this function gets called in newTrial()
             handle = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to graph on GUI
             
-            if obj.trial < 10 %first ten trials
-                ylim(handle,[0 ,obj.trial]);
-                set(handle,'ytick',[1:obj.trial]);
+            lastTrial = obj.trial - 1; %this is because we care about the previous trial
+            
+            if lastTrial < 10 %first ten trials
+                ylim(handle,[0 ,lastTrial]);
+                set(handle,'ytick',[1:lastTrial]);
             else
                 %start taking the lowest trial out of yaxis and adding to
                 %top of yaxis
-                ylim(handle,[obj.trial-10 ,obj.trial]);
-                set(handle,'ytick',[obj.trial-10:obj.trial]);
+                ylim(handle,[lastTrial-10 ,lastTrial]);
+                set(handle,'ytick',[lastTrial-10:lastTrial]);
             end
             
+            %calculate the ratio for averageGratingSide
+            %disp(obj.gratingSideArray(1:lastTrial))
+            obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
+            disp(obj.averageGratingSide)
+            changeratio = obj.averageGratingSide .*2 +2;
+            %plot(obj.averageGratingSide(:), [1:lastTrial])
             
-            if obj.choiceArray(obj.trial,2) == 1 %correct
-                plot(handle, obj.choiceArray(obj.trial,1) ,obj.trial,'ok')
+            
+            if obj.choiceArray(lastTrial,2) == 1 %correct
+                plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'ok',changeratio,1:lastTrial,'b') %plot black circle for correct
                 
             else %incorrect
-                plot(handle, obj.choiceArray(obj.trial,1) ,obj.trial,'xr')
+                plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'xr',changeratio,1:lastTrial,'b') %plot red x for incorrect
                 
             end
-                
+                                    
                 
         end
         
@@ -772,12 +786,14 @@ classdef LinearMaze < handle
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
                 obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
+                obj.gratingSideArray(obj.trial) = 0;
             else%if side == 3%right
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
                 obj.ActualSide = 3;%this is to see if the side chosen was correct or not for the reward
+                obj.gratingSideArray(obj.trial) = 1;
             end
-            
+            %disp(obj.gratingSideArray)
         end
         
         function setNodes_movieMode(obj)
@@ -1038,12 +1054,12 @@ classdef LinearMaze < handle
                     obj.choiceArray(obj.trial,1) = 2; %the mouse went left
                 else
                     sidechosen = 'right';
-                    obj.choiceArray(obj.trial,1) = 3;%the mouse went right
+                    obj.choiceArray(obj.trial,1) = 4;%the mouse went right
                 end
                 
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 2    %left
                     %correct
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
+                    %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     
                     Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
@@ -1055,7 +1071,7 @@ classdef LinearMaze < handle
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
+                    %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     
                     Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
@@ -1071,7 +1087,7 @@ classdef LinearMaze < handle
                     Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
                    
                     
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
+                    %obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
                     
@@ -1083,13 +1099,13 @@ classdef LinearMaze < handle
                     obj.choiceArray(obj.trial,1) = 2;%the mouse went left
                 else
                     sidechosen = 'right';
-                    obj.choiceArray(obj.trial,1) = 3;%the mouse went right
+                    obj.choiceArray(obj.trial,1) = 4;%the mouse went right
                 end
                 
                 if obj.nodes.yaw < 0 && obj.ActualSide == 2          %left
                     %correct
                     
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
+                    %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
@@ -1098,7 +1114,7 @@ classdef LinearMaze < handle
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
                     %correct
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
+                    %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
                     Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
@@ -1109,7 +1125,7 @@ classdef LinearMaze < handle
                     Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
                    
                     
-                    obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
+                    %obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
                     
@@ -1122,28 +1138,33 @@ classdef LinearMaze < handle
             obj.log_trial('%i,%i,%i,%s,%s,%.2f,%i,%i,%i', obj.trial,correctness,obj.ActualSide,sidechosen,obj.stimSize_string,obj.stimRot-90,obj.currentBranch,obj.hardware,obj.steeringLength); 
             
             obj.print('trial,%i', obj.trial); %print trial in command window and log in file
-            
-            obj.MouseChoiceGraph(); %update the mouseChoiceGraph in GUI
-      
+
             obj.trial = obj.trial + 1; %increment the trial number
             
-            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial); %change trial number in GUI
-            
-            
-            
-
-            
             try  %this makes a black screen whenever the end of the preset csv file has been reached                
-                obj.steeringLength = obj.csvDataTable{obj.trial,9};%find(strcmp(obj.newGUI_figurehandle.SteeringLengthDropDown.Items,obj.newGUI_figurehandle.SteeringLengthDropDown.Value));
+                obj.currentBranch = obj.csvDataTable{obj.trial,2};%find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
             catch
                 obj.stop() 
                 obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
             end
             
+            obj.setStimulus(); %put the stimulus in place with correct rotation
+            
+            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial); %change trial number in GUI
+            
+            obj.MouseChoiceGraph(); %update the mouseChoiceGraph in GUI
+
+            
+            %try  %this makes a black screen whenever the end of the preset csv file has been reached                
+                obj.steeringLength = obj.csvDataTable{obj.trial,9};%find(strcmp(obj.newGUI_figurehandle.SteeringLengthDropDown.Items,obj.newGUI_figurehandle.SteeringLengthDropDown.Value));
+            %catch
+%                 obj.stop() 
+%                 obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
+%             end
+            
             
             obj.updateFromCSV() %update input values from csv file
 
-            obj.currentBranch = obj.csvDataTable{obj.trial,2};%find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
             
             %if movie mode, and random then switch the final node randomly
             %left or right
@@ -1165,11 +1186,8 @@ classdef LinearMaze < handle
             end
             
             
-            obj.setStimulus(); %put the stimulus in place with correct rotation
-
-                
             
-            
+               
             
             % Disable movement and show blank screen for the given duration.
             if obj.intertrialBehavior
@@ -1458,6 +1476,7 @@ classdef LinearMaze < handle
            end
         end
         
+       
         function x = right_rightwall(z, branch)
             %right side of right branch
             
