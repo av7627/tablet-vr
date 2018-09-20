@@ -125,7 +125,8 @@ classdef LinearMaze < handle
         
         %averageGratingSide - the current ratio of left vs right.
         %0=left,1=right
-        averageGratingSide;
+        averageGratingSide = [];
+        
         
         yRotation = 90; %for rotating the camera for steering
         x_yRotation = 0;
@@ -174,7 +175,7 @@ classdef LinearMaze < handle
         
         steeringPushfactor = 20;
         
-        %this is used in MouseChoiceGraph to get the average grating side
+        %this is used in MouseGraph to get the average grating side
         %0=left,1=right.Index is trial number.
         gratingSideArray = [];
         
@@ -696,37 +697,54 @@ classdef LinearMaze < handle
             
         end
         
-        function MouseChoiceGraph(obj)
+        function MouseGraph(obj)
             %add another number to y-axis
             %add marker to right/left indicating right/wrong
             %this function gets called in newTrial()
-            handle = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to graph on GUI
+            handle_mouseChoice = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to mouseChoiceGraph on GUI
+            handle_choiceAccuracy = obj.newGUI_figurehandle.ChoiceAccuracyGraph;%handle to ChoiceAccuracyGraph on GUI
             
-            lastTrial = obj.trial - 1; %this is because we care about the previous trial
+            lastTrial = obj.trial - 1; %this is because we care about plotting the previous trial
             
             if lastTrial < 10 %first ten trials
-                ylim(handle,[0 ,lastTrial]);
-                set(handle,'ytick',[1:lastTrial]);
+                ylim(handle_mouseChoice,[0 ,lastTrial]); %increase limit of mouseChoiceGraph trial # by 1
+                set(handle_mouseChoice,'ytick',[1:lastTrial]);%add trial number to graph
+                
             else
                 %start taking the lowest trial out of yaxis and adding to
                 %top of yaxis
-                ylim(handle,[lastTrial-10 ,lastTrial]);
-                set(handle,'ytick',[lastTrial-10:lastTrial]);
+                ylim(handle_mouseChoice,[lastTrial-9 ,lastTrial]);
+                set(handle_mouseChoice,'ytick',[lastTrial-9:lastTrial]);
+                
             end
+            %-----------------This is for choiceAccuracyGraph
+            xlim(handle_choiceAccuracy,[0 ,lastTrial]);%increase limit of ChoiceAccuracyGraph trial # by 1
+            set(handle_choiceAccuracy,'xtick',[1:2:lastTrial]);%add trial number to graph
+            %array for the last ten trials
+            if lastTrial > 10
+                lastTenAccuracy = obj.choiceArray(end-9:end,2); %try getting the accuracy for last 10 trials if trials>10 
+            else
+                lastTenAccuracy = obj.choiceArray(:,2); %get all the accuracy info 
+            end
+            accuracy = sum(lastTenAccuracy)/length(lastTenAccuracy)*100; %the percent accurate over last ten trials
+            plot(handle_choiceAccuracy,lastTrial, accuracy,'om');%plot the accuracy over last ten trials
+            %--------------------
+            
             
             %calculate the ratio for averageGratingSide
-            %disp(obj.gratingSideArray(1:lastTrial))
             obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
-            disp(obj.averageGratingSide)
             changeratio = obj.averageGratingSide .*2 +2;
-            %plot(obj.averageGratingSide(:), [1:lastTrial])
             
             
             if obj.choiceArray(lastTrial,2) == 1 %correct
-                plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'ok',changeratio,1:lastTrial,'b') %plot black circle for correct
+                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2);  %plot average side line
+                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'ok');%plot black circle for correct
+                
                 
             else %incorrect
-                plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'xr',changeratio,1:lastTrial,'b') %plot red x for incorrect
+                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2); %plot average side line
+                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'xr');%plot red x for incorrect
+                
                 
             end
                                     
@@ -1069,6 +1087,7 @@ classdef LinearMaze < handle
                     
                     obj.choiceArray(obj.trial,2) = 1; %correct side chosen
                     
+                    
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
                     %correct
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
@@ -1152,7 +1171,7 @@ classdef LinearMaze < handle
             
             obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial); %change trial number in GUI
             
-            obj.MouseChoiceGraph(); %update the mouseChoiceGraph in GUI
+            obj.MouseGraph(); %update the mouseGraph in GUI
 
             
             %try  %this makes a black screen whenever the end of the preset csv file has been reached                
