@@ -270,7 +270,7 @@ classdef LinearMaze < handle
         
         
         
-        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
+        csvFileName = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\GitHub\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
         
         
     end
@@ -921,16 +921,17 @@ classdef LinearMaze < handle
             % LinearMaze.pause(duration)
             % Show blank for a given duration.
             
-            %duration = 0; %hardcode blank to be zero
-            
-            Objects.delete(obj.blankId);
+           
+            %Objects.delete(obj.blankId); %this gave me a problem on the
+            %basement pc
             if duration == 0 && ~obj.stopDuringBlank
                 obj.sender.send('enable,Blank,0;', obj.addresses);
                 obj.enabled = true;
             elseif duration > 0
                 obj.enabled = false;
                 obj.sender.send('enable,Blank,1;', obj.addresses);
-                obj.blankId = obj.scheduler.delay({@obj.blank, 0}, duration);
+                %obj.blankId = %this also gave me a problem on pc
+                obj.scheduler.delay({@obj.blank, 0}, duration);
             end
         end
         
@@ -1080,7 +1081,7 @@ classdef LinearMaze < handle
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     
-                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.treadmill.reward(obj.rewardDuration);
                     
                     obj.log('note,reward');
@@ -1093,7 +1094,7 @@ classdef LinearMaze < handle
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     
-                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
                     
                     obj.treadmill.reward(obj.rewardDuration);
                     
@@ -1103,7 +1104,7 @@ classdef LinearMaze < handle
                 else
                     %incorrect
                     
-                    Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
+                    %Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
                    
                     
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
@@ -1127,7 +1128,7 @@ classdef LinearMaze < handle
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct left';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
-                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
                     obj.log('note,reward');
                     obj.choiceArray(obj.trial,2) = 1; %correct side chosen
                     
@@ -1136,12 +1137,12 @@ classdef LinearMaze < handle
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'correct right';
                     obj.intertrialDuration = 1;
                     obj.treadmill.reward(obj.rewardDuration);
-                    Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
+                    %Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.log('note,reward');
                     obj.choiceArray(obj.trial,2) = 1; %correct side chosen
                 else
                     %incorrect
-                    Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
+                    %Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
                    
                     
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
@@ -1208,7 +1209,7 @@ classdef LinearMaze < handle
             
                
             
-            % Disable movement and show blank screen for the given duration.
+            %Disable movement and show blank screen for the given duration.
             if obj.intertrialBehavior
                 obj.blank(obj.intertrialDuration);
             else
