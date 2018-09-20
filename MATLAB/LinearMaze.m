@@ -270,7 +270,7 @@ classdef LinearMaze < handle
         
         
         
-        csvFileName = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\GitHub\tablet-vr\MATLAB\LinearMaze_presets\testPresets.csv'; %the preset file to set variables automatically
+        csvFileName = 'testPresets.csv'; %the preset file to set variables automatically
         
         
     end
