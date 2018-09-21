@@ -123,6 +123,10 @@ classdef LinearMaze < handle
         %choiceArray - each index is a trial. 1=left,2=right
         choiceArray = [];
         
+        %accuracyArray - each index is the accuracy over last ten trials,
+        %index is trial number
+        accuracyArray = [];
+        
         %averageGratingSide - the current ratio of left vs right.
         %0=left,1=right
         averageGratingSide = [];
@@ -253,7 +257,8 @@ classdef LinearMaze < handle
 %         left_rightwall
 %         right_leftwall %right branch
 %         right_rightwall
-
+        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\'; %the preset file to set variables automatically
+        
         
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
@@ -270,8 +275,7 @@ classdef LinearMaze < handle
         
         
         
-        csvFileName = 'testPresets.csv'; %the preset file to set variables automatically
-        
+       
         
     end
     %%
@@ -288,7 +292,9 @@ classdef LinearMaze < handle
             
             %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
             
-           
+            obj.newGUI_figurehandle = app; %this is the handle for the app. to set values from CSV
+            
+            
             varargin = varargin{:};%convert from cell array to string
             varargin= varargin(~isspace(varargin));%get rid of spaces
             varargin = strsplit(varargin,',');%split on commas
@@ -340,16 +346,19 @@ classdef LinearMaze < handle
             obj.addresses = monitors(1:2:end); %disp(obj.addresses)
             obj.sender = UDPSender(32000);
             
+            %get mouse name for log files
+            mouseName = obj.newGUI_figurehandle.EnterMouseNameEditField.Value;
+            
  
             % Create a log file. Time based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
-            session = sprintf('VR_TimeBased%s', datestr(now, 'yyyymmddHHMMSS'));
+            session = sprintf([mouseName,'_VR_TimeBased%s'], datestr(now, 'yyyymmddHHMMSS'));
             obj.filename = fullfile(folder, sprintf('%s.csv', session));
             obj.fid = Files.open(obj.filename, 'a');
             
             % Create a log file. Trial based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TrialBased');
-            session = sprintf('VR_TrialBased%s', datestr(now, 'yyyymmddHHMMSS'));
+            session = sprintf([mouseName,'_VR_TrialBased%s'], datestr(now, 'yyyymmddHHMMSS'));
             obj.filename_trial = fullfile(folder, sprintf('%s.csv', session));
             obj.fid_trial = Files.open(obj.filename_trial, 'a');
             
@@ -471,19 +480,22 @@ classdef LinearMaze < handle
             obj.nodes.register('Lap', @(lap)obj.onLap);
             obj.nodes.register('Node', @obj.onNode);
 
+            
+            obj.csvFileName = [obj.csvFileName,obj.newGUI_figurehandle.EnterPresetFileNameEditField.Value];%add filename of preset file to file path
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
             
            
             
             
-            obj.newGUI_figurehandle = app; %this is the handle for the app. to set values from CSV
             
             
             obj.updateFromCSV(); %update variables with csv file values
             set(findall(obj.newGUI_figurehandle.UIFigure, '-property', 'enable'), 'enable', 'on'); %this turns the startup info buttons off
             set(obj.newGUI_figurehandle.EnterStartupInfoEditField,'Enable','off');
             set(obj.newGUI_figurehandle.SendButton,'Enable','off');
-            %set(obj.newGUI_figurehandle.Label,'Enable','off');
+            set(obj.newGUI_figurehandle.EnterPresetFileNameEditField,'Enable','off');
+            set(obj.newGUI_figurehandle.EnterMouseNameEditField,'Enable','off');
+            
             
             obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
 
@@ -682,8 +694,8 @@ classdef LinearMaze < handle
             delete(obj.nodes);
             delete(obj.sender);
             obj.log('note,delete');
-            fclose(obj.fid);
-            fclose(obj.fid_trial);
+            fclose(obj.fid); %close timeBased log file
+            fclose(obj.fid_trial); %close trialBased log file
             LinearMaze.export(obj.filename);
             LinearMaze.export(obj.filename_trial);
             
@@ -726,8 +738,8 @@ classdef LinearMaze < handle
             else
                 lastTenAccuracy = obj.choiceArray(:,2); %get all the accuracy info 
             end
-            accuracy = sum(lastTenAccuracy)/length(lastTenAccuracy)*100; %the percent accurate over last ten trials
-            plot(handle_choiceAccuracy,lastTrial, accuracy,'om');%plot the accuracy over last ten trials
+            obj.accuracyArray(lastTrial) = sum(lastTenAccuracy)/length(lastTenAccuracy)*100; %the percent accurate over last ten trials
+            plot(handle_choiceAccuracy,1:lastTrial, obj.accuracyArray,'-m','LineWidth',2);%plot the accuracy over last ten trials
             %--------------------
             
             
@@ -1154,7 +1166,7 @@ classdef LinearMaze < handle
             end
             
             %log last trial
-            obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+            obj.log('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             obj.log_trial('%i,%i,%i,%s,%s,%.2f,%i,%i,%i', obj.trial,correctness,obj.ActualSide,sidechosen,obj.stimSize_string,obj.stimRot-90,obj.currentBranch,obj.hardware,obj.steeringLength); 
             
             obj.print('trial,%i', obj.trial); %print trial in command window and log in file
