@@ -127,6 +127,10 @@ classdef LinearMaze < handle
         %index is trial number
         accuracyArray = [];
         
+        %averageCorrectChoice - a running average of correct choice at each
+        %trial
+        averageCorrectChoice = [];
+        
         %averageGratingSide - the current ratio of left vs right.
         %0=left,1=right
         averageGratingSide = [];
@@ -377,8 +381,8 @@ classdef LinearMaze < handle
             obj.print_trial('filename,%s', obj.filename_trial);
             
             %print categories in log file
-            obj.log('logType,frame,EncoderStep,distanceFromStart ,yaw,x_movie,z_movie,x_hardware,z_hardware, speed_movie,speed_hardware, branchNum');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
-            obj.log_trial('trialNum, correct/incorrect, stimSide, sideChosen, stim spacialFreq, stim orientation, branchNum, hardware on/off, distanceBeginSteering');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
+            obj.log('logType,trial,frame,EncoderStep,distanceFromStart ,yaw,x_movie,z_movie,x_hardware,z_hardware, speed_movie,speed_hardware, branchNum');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
+            obj.log_trial('trialNum, correct/incorrect, stimSide, sideChosen, stim spatialFreq, stim orientation, branchNum, hardware on/off, distanceBeginSteering');% obj.treadmill.frame,obj.treadmill.step,obj.nodes.distance,obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2)
             
             
             % Show blank.
@@ -406,7 +410,7 @@ classdef LinearMaze < handle
 %           fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count);
 %       end
             %set up listener for sparkfun touch pad:
-%             disp('dick')
+%            
              %obj.treadmill.bridge.register(3,@obj.touchPad); %touchPad(obj) is the callback function for the touchPad
 %             disp('face')
             
@@ -481,7 +485,7 @@ classdef LinearMaze < handle
             obj.nodes.register('Node', @obj.onNode);
 
             
-            obj.csvFileName = [obj.csvFileName,obj.newGUI_figurehandle.EnterPresetFileNameEditField.Value];%add filename of preset file to file path
+            obj.csvFileName = [obj.csvFileName,obj.newGUI_figurehandle.EnterPresetFileNameEditField.Value,'.csv'];%add filename of preset file to file path
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
             
            
@@ -495,20 +499,23 @@ classdef LinearMaze < handle
             set(obj.newGUI_figurehandle.SendButton,'Enable','off');
             set(obj.newGUI_figurehandle.EnterPresetFileNameEditField,'Enable','off');
             set(obj.newGUI_figurehandle.EnterMouseNameEditField,'Enable','off');
+            if obj.hardware == 0
+                set(obj.newGUI_figurehandle.SteeringOnOffDropDown,'Enable','off'); %this can only be used if hardware is connected
+            end
             
-            
-            obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
+            %obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
 
             
             obj.currentBranch = obj.csvDataTable.BranchNum(1); %set the first branch num
             
             %obj.nodes.vertices = obj.vertices(obj.currentBranch,:); %first update from csv then set the nodal path
             if obj.hardware == 0  %if not using steering 
-                obj.setNodes_movieMode(); %set path for right or left. movie mode only
+                %obj.setNodes_movieMode(); %set path for right or left. movie mode only
+                obj.vectorPosition = [nan,nan];
+            else
+                obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
             end
-            
-            obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
-            
+            obj.setNodes_movieMode(); %set a nodal path even with hardware on  
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
@@ -529,7 +536,7 @@ classdef LinearMaze < handle
 %         end
         
         function updateFromCSV(obj)
-            currentValues = obj.csvDataTable{obj.trial,:}; %Trial	BranchNum	stim(on/off)	Spacial Freq (stim)	orientation (stim)	Reward Side	side (movie mode)	steering type (movie/wheel)	speed	distance from split turn on steering ([1,2,3,4]/4)	logText
+            currentValues = obj.csvDataTable{obj.trial,:}; %Trial	BranchNum	stim(on/off)	Spatial Freq (stim)	orientation (stim)	Reward Side	side (movie mode)	steering type (movie/wheel)	speed	distance from split turn on steering ([1,2,3,4]/4)	logText
        
             %set(obj.choosebranch_h, 'Value', currentValues(2)) %change branchNum
             %obj.chooseBranch() 
@@ -542,7 +549,7 @@ classdef LinearMaze < handle
             
             %set(obj.stimSize_h, 'Value', currentValues(4)) %change stim thickness (spatial frequency)
             %obj.stimThickness() %switched to new GUI
-            obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Items{currentValues(4)};
+            obj.newGUI_figurehandle.SpatialFrequencyDropDown.Value = obj.newGUI_figurehandle.SpatialFrequencyDropDown.Items{currentValues(4)};
             
         
             %set(obj.textBox_stimRotation_h, 'String', currentValues(5))
@@ -563,6 +570,8 @@ classdef LinearMaze < handle
             
         end
        
+        
+        
         function chooseBranch(obj,branchNum)
             % This function overwrites the csvfile data table when a manual input is entered
             obj.csvDataTable{obj.trial:end,2} = branchNum; %obj.choosebranch_h.Value; %index is the 2nd column. overwrite branchNum data with this branchNum
@@ -745,20 +754,18 @@ classdef LinearMaze < handle
             
             %calculate the ratio for averageGratingSide
             obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
-            changeratio = obj.averageGratingSide .*2 +2;
+            changeratio = obj.averageGratingSide .*2 +2;%stretch by factor of 2, push to the right 2. So it fits in the plot 
             
+            obj.averageCorrectChoice(lastTrial) = sum(obj.choiceArray(:,1))/length(obj.choiceArray(:,2)); %list of average correct choice at each trial
             
             if obj.choiceArray(lastTrial,2) == 1 %correct
-                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2);  %plot average side line
-                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'ok');%plot black circle for correct
-                
-                
+                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'o','color',[0 .5 0],'LineWidth',1);%plot black circle for correct
             else %incorrect
-                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2); %plot average side line
-                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'xr');%plot red x for incorrect
-                
-                
+                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'xr','LineWidth',1);%plot red x for incorrect
             end
+            
+            plot(handle_mouseChoice,obj.averageCorrectChoice,1:lastTrial,'k','LineWidth',2);  %plot list of average correct choice at each trial 
+            plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2);  %plot average side line
                                     
                 
         end
@@ -795,7 +802,7 @@ classdef LinearMaze < handle
 %             else %thin
 %                 obj.stimSize_string = 'Thin';
 %             end
-            obj.stimSize_string = obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value; %get spatial freq from APP
+            obj.stimSize_string = obj.newGUI_figurehandle.SpatialFrequencyDropDown.Value; %get spatial freq from APP
             obj.stimRot = obj.newGUI_figurehandle.EnterRotationEditField.Value+90;% get rotation from APP %str2double(obj.textBox_stimRotation_h.String)+90;
              
             %set rotation of current branches stimuli
@@ -813,12 +820,12 @@ classdef LinearMaze < handle
             
             %obj.ActualSide = preset; %this is to see if the side chosen was correct or not for the reward
             if preset < rando %left
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value ,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpatialFrequencyDropDown.Value ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
                 obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
                 obj.gratingSideArray(obj.trial) = 0;
             else%if side == 3%right
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpacialFrequencyDropDown.Value,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpatialFrequencyDropDown.Value,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
                 obj.ActualSide = 3;%this is to see if the side chosen was correct or not for the reward
                 obj.gratingSideArray(obj.trial) = 1;
@@ -860,11 +867,7 @@ classdef LinearMaze < handle
                        obj.nodes.vertices(end-1) = 488;%right
                     end
                 end
-            
-            
-            
-            
-            
+    
 %                 if rand == 1
 %                     rand = randi([2 3]); %round(rand)+2%2 or 3
 %                 end
@@ -979,20 +982,15 @@ classdef LinearMaze < handle
         
         
 %         function MovieModeDirection(obj)
-% %             if obj.movieDirection_h.Value == 1 %random
-% %                 obj.movieDirection = 0;
-% %             elseif obj.movieDirection_h.Value == 2 %left 
-% %                 obj.movieDirection = 1;
-% %             else
-% %                 obj.movieDirection = 2;%right
-% %             end
+%             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
+%             if yo == 1
+%                 obj.hardware = 2;
+%             else
+%                 obj.hardware = 0;
+%             end
 %             
 %         end
-        
-        
-        
-        
-        
+  
         function log(obj, format, varargin)
             % LinearMaze.log(format, arg1, arg2, ...)
             % Create a log entry using the same syntax as sprintf.
@@ -1015,30 +1013,6 @@ classdef LinearMaze < handle
                 obj.pauseId = obj.scheduler.delay({@obj.pause, 0}, duration);
             end
         end
-        
-%         function tempMovie(obj)
-%            % if ~isempty(obj.com)
-%                 if obj.tempMovieMode.Value == 1
-%                     obj.enabled = true;
-% %                     obj.hardware = 2;
-% %                     obj.mSpeed = 0;
-% %                     
-%                  obj.treadmill = ArduinoTreadmill('com5');
-%                  obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
-%            
-%                 else
-%                     obj.enabled = false;
-% %                     obj.hardware = 0;
-% %                     obj.mSpeed = 25;
-% %                     
-%                  obj.treadmill = TreadmillInterface();
-% %                 
-%                 end
-%         end
-           % end
-        
-           
-                    
         
         function print(obj, format, varargin)
             % LinearMaze.print(format, arg1, arg2, ...)
@@ -1070,13 +1044,12 @@ classdef LinearMaze < handle
         function newTrial(obj)
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
-            
-            %this is how to change and update a popupmenu in GUI:
-%             set(obj.choosebranch_h, 'Value', 2)
-%             obj.chooseBranch()
-           
-            %this if else statement does not work when stim or movieside is
-            %  'random'
+            yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
+            if yo == 1
+                obj.hardware = 2;
+            else
+                obj.hardware = 0;
+            end
             
             correctness = 1;
             if obj.hardware == 2
@@ -1169,7 +1142,7 @@ classdef LinearMaze < handle
             obj.log('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             obj.log_trial('%i,%i,%i,%s,%s,%.2f,%i,%i,%i', obj.trial,correctness,obj.ActualSide,sidechosen,obj.stimSize_string,obj.stimRot-90,obj.currentBranch,obj.hardware,obj.steeringLength); 
             
-            obj.print('trial,%i', obj.trial); %print trial in command window and log in file
+            %obj.print('trial,%i', obj.trial); %print trial in command window and log in file
 
             obj.trial = obj.trial + 1; %increment the trial number
             
@@ -1177,7 +1150,7 @@ classdef LinearMaze < handle
                 obj.currentBranch = obj.csvDataTable{obj.trial,2};%find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
             catch
                 obj.stop() 
-                obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
+                %obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
             end
             
             obj.setStimulus(); %put the stimulus in place with correct rotation
@@ -1217,10 +1190,6 @@ classdef LinearMaze < handle
                 obj.addresses);
             end
             
-            
-            
-               
-            
             %Disable movement and show blank screen for the given duration.
             if obj.intertrialBehavior
                 obj.blank(obj.intertrialDuration);
@@ -1250,7 +1219,7 @@ classdef LinearMaze < handle
                 obj.addresses);
             
             if obj.logOnChange
-                obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, distance, yaw, position(1), position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                obj.log('data,%i%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i',obj.trial, obj.treadmill.frame, obj.treadmill.step, distance, yaw, position(1), position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             end
         end
         
@@ -1263,7 +1232,7 @@ classdef LinearMaze < handle
             
             
             if obj.logOnFrame
-                obj.log('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                obj.log('data,%i%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i',obj.trial, frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             end
             
             % Change the name to reflect frame number.
@@ -1276,11 +1245,7 @@ classdef LinearMaze < handle
             
             obj.newTrial();
         end
-        
-        
-        
-        
-        
+
         function onTape(obj, forward)
             % LinearMaze.onTape(state)
             % Treadmill's photosensor detected a reflective tape in the belt.
@@ -1324,7 +1289,7 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-            if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            if obj.enabled && obj.hardware==2  %&& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -1383,7 +1348,7 @@ classdef LinearMaze < handle
                 if obj.hardware == 0 && obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
-                elseif obj.hardware == 2 && obj.enabled  %hardware on, obj enabled
+                elseif obj.enabled  %hardware on, obj enabled
                      
                     obj.sender.send(sprintf(...
                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
@@ -1442,7 +1407,7 @@ classdef LinearMaze < handle
                  end
         
             if obj.logOnUpdate
-                str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
                 if ~strcmp(str, obj.update)
                     obj.update = str;
                     obj.log(str);
