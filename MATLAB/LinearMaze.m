@@ -123,6 +123,13 @@ classdef LinearMaze < handle
         %choiceArray - each index is a trial. 1=left,2=right
         choiceArray = [];
         
+<<<<<<< HEAD
+=======
+        %accuracyArray - each index is the accuracy over last ten trials,
+        %index is trial number
+        accuracyArray = [];
+        
+>>>>>>> parent of 05fcfbf... temp movie mode
         %averageGratingSide - the current ratio of left vs right.
         %0=left,1=right
         averageGratingSide;
@@ -470,6 +477,11 @@ classdef LinearMaze < handle
             obj.nodes.register('Lap', @(lap)obj.onLap);
             obj.nodes.register('Node', @obj.onNode);
 
+<<<<<<< HEAD
+=======
+            
+            obj.csvFileName = [obj.csvFileName,obj.newGUI_figurehandle.EnterPresetFileNameEditField.Value];%add filename of preset file to file path
+>>>>>>> parent of 05fcfbf... temp movie mode
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
             
            
@@ -482,8 +494,15 @@ classdef LinearMaze < handle
             set(findall(obj.newGUI_figurehandle.UIFigure, '-property', 'enable'), 'enable', 'on'); %this turns the startup info buttons off
             set(obj.newGUI_figurehandle.EnterStartupInfoEditField,'Enable','off');
             set(obj.newGUI_figurehandle.SendButton,'Enable','off');
+<<<<<<< HEAD
             %set(obj.newGUI_figurehandle.Label,'Enable','off');
             
+=======
+            set(obj.newGUI_figurehandle.EnterPresetFileNameEditField,'Enable','off');
+            set(obj.newGUI_figurehandle.EnterMouseNameEditField,'Enable','off');
+            
+            
+>>>>>>> parent of 05fcfbf... temp movie mode
             obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
 
             
@@ -724,15 +743,30 @@ classdef LinearMaze < handle
             end
             
             %calculate the ratio for averageGratingSide
+<<<<<<< HEAD
             obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list 
+=======
+            obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
+>>>>>>> parent of 05fcfbf... temp movie mode
             changeratio = obj.averageGratingSide .*2 +2;
             
             
             if obj.choiceArray(lastTrial,2) == 1 %correct
+<<<<<<< HEAD
                 plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'ok',changeratio,1:lastTrial,'b') %plot black circle for correct
                 
             else %incorrect
                 plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'xr',changeratio,1:lastTrial,'b') %plot red x for incorrect
+=======
+                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2);  %plot average side line
+                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'ok');%plot black circle for correct
+                
+                
+            else %incorrect
+                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2); %plot average side line
+                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'xr');%plot red x for incorrect
+                
+>>>>>>> parent of 05fcfbf... temp movie mode
                 
             end
                                     
@@ -1047,6 +1081,7 @@ classdef LinearMaze < handle
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
 <<<<<<< HEAD
+<<<<<<< HEAD
             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
             if yo == 1 && ~isempty(obj.com)
                 obj.hardware = 2;
@@ -1054,6 +1089,8 @@ classdef LinearMaze < handle
                 obj.hardware = 0;
             end
 =======
+=======
+>>>>>>> parent of 05fcfbf... temp movie mode
             
             %this is how to change and update a popupmenu in GUI:
 %             set(obj.choosebranch_h, 'Value', 2)
@@ -1061,7 +1098,10 @@ classdef LinearMaze < handle
            
             %this if else statement does not work when stim or movieside is
             %  'random'
+<<<<<<< HEAD
 >>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
+=======
+>>>>>>> parent of 05fcfbf... temp movie mode
             
             correctness = 1;
             if obj.hardware == 2
@@ -1309,10 +1349,14 @@ classdef LinearMaze < handle
             
             
 <<<<<<< HEAD
+<<<<<<< HEAD
             if obj.enabled %&& obj.hardware==2  %&& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
 =======
             if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
 >>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
+=======
+            if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+>>>>>>> parent of 05fcfbf... temp movie mode
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
