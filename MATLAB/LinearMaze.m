@@ -715,11 +715,8 @@ classdef LinearMaze < handle
             end
             
             %calculate the ratio for averageGratingSide
-            %disp(obj.gratingSideArray(1:lastTrial))
-            obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
-            disp(obj.averageGratingSide)
+            obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list 
             changeratio = obj.averageGratingSide .*2 +2;
-            %plot(obj.averageGratingSide(:), [1:lastTrial])
             
             
             if obj.choiceArray(lastTrial,2) == 1 %correct
