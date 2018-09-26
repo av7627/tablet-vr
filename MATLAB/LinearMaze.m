@@ -123,13 +123,12 @@ classdef LinearMaze < handle
         %choiceArray - each index is a trial. 1=left,2=right
         choiceArray = [];
         
-<<<<<<< HEAD
-=======
+
         %accuracyArray - each index is the accuracy over last ten trials,
         %index is trial number
         accuracyArray = [];
         
->>>>>>> parent of 05fcfbf... temp movie mode
+        %temp movie mode
         %averageGratingSide - the current ratio of left vs right.
         %0=left,1=right
         averageGratingSide;
@@ -477,11 +476,10 @@ classdef LinearMaze < handle
             obj.nodes.register('Lap', @(lap)obj.onLap);
             obj.nodes.register('Node', @obj.onNode);
 
-<<<<<<< HEAD
-=======
+
             
             obj.csvFileName = [obj.csvFileName,obj.newGUI_figurehandle.EnterPresetFileNameEditField.Value];%add filename of preset file to file path
->>>>>>> parent of 05fcfbf... temp movie mode
+
             obj.csvDataTable = readtable(obj.csvFileName, 'Format', '%f%f%f%f%f%f%f%f%f%f%f'); %read from preset csv file
             
            
@@ -494,15 +492,15 @@ classdef LinearMaze < handle
             set(findall(obj.newGUI_figurehandle.UIFigure, '-property', 'enable'), 'enable', 'on'); %this turns the startup info buttons off
             set(obj.newGUI_figurehandle.EnterStartupInfoEditField,'Enable','off');
             set(obj.newGUI_figurehandle.SendButton,'Enable','off');
-<<<<<<< HEAD
+
             %set(obj.newGUI_figurehandle.Label,'Enable','off');
             
-=======
+
             set(obj.newGUI_figurehandle.EnterPresetFileNameEditField,'Enable','off');
             set(obj.newGUI_figurehandle.EnterMouseNameEditField,'Enable','off');
             
             
->>>>>>> parent of 05fcfbf... temp movie mode
+
             obj.newGUI_figurehandle.debugEditField.Value = 'ready'; %this changes the debug log on the gui to say ready to start
 
             
@@ -719,18 +717,15 @@ classdef LinearMaze < handle
             %add another number to y-axis
             %add marker to right/left indicating right/wrong
             %this function gets called in newTrial()
-<<<<<<< HEAD
-            
+
        
             handle_mouseChoice = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to mouseChoiceGraph on GUI
             handle_choiceAccuracy = obj.newGUI_figurehandle.ChoiceAccuracyGraph;%handle to ChoiceAccuracyGraph on GUI
            
             lastTrial = obj.trial - 1; %this is because we care about plotting the previous trial
-=======
             handle = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to graph on GUI
             
             lastTrial = obj.trial - 1; %this is because we care about the previous trial
->>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
             
             if lastTrial < 10 %first ten trials
                 ylim(handle,[0 ,lastTrial]);
@@ -743,31 +738,26 @@ classdef LinearMaze < handle
             end
             
             %calculate the ratio for averageGratingSide
-<<<<<<< HEAD
-            obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list 
-=======
+
             obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
->>>>>>> parent of 05fcfbf... temp movie mode
             changeratio = obj.averageGratingSide .*2 +2;
             
             
             if obj.choiceArray(lastTrial,2) == 1 %correct
-<<<<<<< HEAD
                 plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'ok',changeratio,1:lastTrial,'b') %plot black circle for correct
                 
             else %incorrect
                 plot(handle, obj.choiceArray(lastTrial,1) ,lastTrial,'xr',changeratio,1:lastTrial,'b') %plot red x for incorrect
-=======
+
                 plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2);  %plot average side line
                 plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'ok');%plot black circle for correct
                 
                 
-            else %incorrect
-                plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2); %plot average side line
-                plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'xr');%plot red x for incorrect
-                
->>>>>>> parent of 05fcfbf... temp movie mode
-                
+%             else %incorrect
+%                 plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2); %plot average side line
+%                 plot(handle_mouseChoice, obj.choiceArray(lastTrial,1),lastTrial,'xr');%plot red x for incorrect
+%                 
+
             end
                                     
                 
@@ -1080,28 +1070,20 @@ classdef LinearMaze < handle
         function newTrial(obj)
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
-<<<<<<< HEAD
-<<<<<<< HEAD
+
             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
             if yo == 1 && ~isempty(obj.com)
                 obj.hardware = 2;
             elseif ~isempty(obj.com)
                 obj.hardware = 0;
             end
-=======
-=======
->>>>>>> parent of 05fcfbf... temp movie mode
-            
             %this is how to change and update a popupmenu in GUI:
 %             set(obj.choosebranch_h, 'Value', 2)
 %             obj.chooseBranch()
            
             %this if else statement does not work when stim or movieside is
             %  'random'
-<<<<<<< HEAD
->>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
-=======
->>>>>>> parent of 05fcfbf... temp movie mode
+
             
             correctness = 1;
             if obj.hardware == 2
@@ -1348,15 +1330,11 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-<<<<<<< HEAD
-<<<<<<< HEAD
-            if obj.enabled %&& obj.hardware==2  %&& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
-=======
+
+    
+           
             if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
->>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
-=======
-            if obj.enabled% & obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
->>>>>>> parent of 05fcfbf... temp movie mode
+
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -1411,9 +1389,7 @@ classdef LinearMaze < handle
             % LinearMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
              %tic
-<<<<<<< HEAD
                 if obj.enabled
-=======
                 
                 if obj.hardware == 0 && obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
@@ -1430,7 +1406,6 @@ classdef LinearMaze < handle
 %                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
 %                     end
                     obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
->>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
                     
                     if obj.hardware == 0 %obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                         % Open-loop updates position when open-loop speed is different 0.
@@ -1498,7 +1473,6 @@ classdef LinearMaze < handle
 
                      end
         
-<<<<<<< HEAD
                     if obj.logOnUpdate
                         str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
                         if ~strcmp(str, obj.update)
@@ -1507,14 +1481,8 @@ classdef LinearMaze < handle
                         end
 
                     end
-=======
-            if obj.logOnUpdate
-                str = sprintf('data,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
-                if ~strcmp(str, obj.update)
-                    obj.update = str;
-                    obj.log(str);
->>>>>>> 114e8506c7ed6de3532deb570ba06a2fcc51b51c
-                end
+
+           
 %             linear = toc;%av = 0.001
 %             disp([linear,obj.enabled])%monitors,{192.168.0.11;0},hardware,0
         end
