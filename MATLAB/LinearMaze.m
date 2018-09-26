@@ -261,7 +261,7 @@ classdef LinearMaze < handle
 %         left_rightwall
 %         right_leftwall %right branch
 %         right_rightwall
-        csvFileName = 'C:\Users\anilv\Documents\GandhiLab\Github\tablet-vr\MATLAB\LinearMaze_presets\'; %the preset file to set variables automatically
+        csvFileName = 'LinearMaze_presets\'; %the preset file to set variables automatically
         
         
         
