@@ -722,9 +722,11 @@ classdef LinearMaze < handle
             %add another number to y-axis
             %add marker to right/left indicating right/wrong
             %this function gets called in newTrial()
+            
+       
             handle_mouseChoice = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to mouseChoiceGraph on GUI
             handle_choiceAccuracy = obj.newGUI_figurehandle.ChoiceAccuracyGraph;%handle to ChoiceAccuracyGraph on GUI
-            
+           
             lastTrial = obj.trial - 1; %this is because we care about plotting the previous trial
             
             if lastTrial < 10 %first ten trials
@@ -1045,9 +1047,9 @@ classdef LinearMaze < handle
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
-            if yo == 1
+            if yo == 1 && ~isempty(obj.com)
                 obj.hardware = 2;
-            else
+            elseif ~isempty(obj.com)
                 obj.hardware = 0;
             end
             
@@ -1289,7 +1291,7 @@ classdef LinearMaze < handle
             %                    distance from start to split
             
             
-            if obj.enabled && obj.hardware==2  %&& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
+            if obj.enabled %&& obj.hardware==2  %&& obj.vectorPosition(2) > (5-obj.steeringLength)/4 * obj.straightDist(obj.currentBranch) + obj.vertices(obj.currentBranch,2)
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
@@ -1309,9 +1311,9 @@ classdef LinearMaze < handle
 %                 obj.sender.send(Tools.compose([sprintf(...
 %                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
 %                 obj.addresses);
-                 obj.sender.send(sprintf(...
-                    'rotation,Main Camera,0,%.2f,0;', obj.yRotation-90 + obj.offsets), ...
-                 obj.addresses);
+%                  obj.sender.send(sprintf(...
+%                     'rotation,Main Camera,0,%.2f,0;', obj.yRotation-90 + obj.offsets), ...
+%                  obj.addresses);
 
             end
         end
@@ -1344,76 +1346,83 @@ classdef LinearMaze < handle
             % LinearMaze.onUpdate()
             % Create an entry in the log file if logOnUpdate == true.
              %tic
-                
-                if obj.hardware == 0 && obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
-                    % Open-loop updates position when open-loop speed is different 0.
-                    obj.nodes.push(obj.speed / obj.nodes.fps);
-                elseif obj.enabled  %hardware on, obj enabled
-                     
-                    obj.sender.send(sprintf(...
-                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
-                    obj.addresses);
-                
-%                     if ~isempty(obj.textBox_speed_h.String)
-%                         obj.steeringPushfactor = obj.csvDataTable{obj.trial,8} * .05;%str2double(obj.textBox_speed_h.String)*.05;%steering factor based off speed textbox and random 0.05 number
-%                     else
-%                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
-%                     end
-                    obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
+                if obj.enabled
                     
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - (cosd(obj.yRotation)*obj.steeringPushfactor);
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + (sind(obj.yRotation)*obj.steeringPushfactor);
-                    
-                    x_coord = obj.vectorPosition(1);
-                    y_coord = obj.vectorPosition(2);
-                    
-                
-                    %----------------------------------------------------------------------------
-                    
-                             %this ifelse is the walls
-                    if y_coord < obj.branchArray(obj.currentBranch,4)%-28 %on straight path
-                        %bound x by [457, 475]
-                        if x_coord < obj.branchArray(obj.currentBranch,1) %457 too far left
-                            obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,1);
-                        elseif x_coord > obj.branchArray(obj.currentBranch,3) %475 %too far right
-                            obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,3);
-                        end
-                        
-                            
-                    else%if obj.vectorPosition(2) >= obj.branchArray(obj.currentBranch,4)%-28
-                        %bound x by function of z
-                        if x_coord <= obj.branchArray(obj.currentBranch,2)%466 %left path
-                            if x_coord < obj.left_leftwall(y_coord,obj.currentBranch) %too far left
-                                obj.vectorPosition(1) = obj.left_leftwall(y_coord,obj.currentBranch);%function of z
-                            elseif x_coord > obj.left_rightwall(y_coord,obj.currentBranch) %too far right
-                                obj.vectorPosition(1) = obj.left_rightwall(y_coord,obj.currentBranch); %function of z
-                            end
-                        else%if x_coord > obj.branchArray(obj.currentBranch,2)%466 %right path
-                            if x_coord < obj.right_leftwall(y_coord,obj.currentBranch) %too far left
-                                obj.vectorPosition(1) = obj.right_leftwall(y_coord,obj.currentBranch);%function of z
-                            elseif x_coord > obj.right_rightwall(y_coord,obj.currentBranch) %too far right
-                                obj.vectorPosition(1) = obj.right_rightwall(y_coord,obj.currentBranch); %function of z
-                            end
-                        end
-                    end
-                    %---------------------------------------------------------------------------------
-                         %obj.vectorPosition
-%             obj.vertices(obj.choosebranch_h.Value,end)
-                     if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
+                    if obj.hardware == 0 %obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
+                        % Open-loop updates position when open-loop speed is different 0.
+                        obj.nodes.push(obj.speed / obj.nodes.fps);
+                    else  %hardware on, obj enabled
 
-                            obj.newTrial();
-                     end  
-                     
-                 end
+                        obj.sender.send(sprintf(...
+                        'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                        obj.addresses);
+
+                         obj.sender.send(sprintf(...
+                            'rotation,Main Camera,0,%.2f,0;', obj.yRotation-90 + obj.offsets), ...
+                         obj.addresses);
+
+
+    %                     if ~isempty(obj.textBox_speed_h.String)
+    %                         obj.steeringPushfactor = obj.csvDataTable{obj.trial,8} * .05;%str2double(obj.textBox_speed_h.String)*.05;%steering factor based off speed textbox and random 0.05 number
+    %                     else
+    %                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
+    %                     end
+                        obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
+
+                        obj.vectorPosition(1) = obj.vectorPosition(1) - (cosd(obj.yRotation)*obj.steeringPushfactor);
+                        obj.vectorPosition(2) = obj.vectorPosition(2) + (sind(obj.yRotation)*obj.steeringPushfactor);
+
+                        x_coord = obj.vectorPosition(1);
+                        y_coord = obj.vectorPosition(2);
+
+
+                        %----------------------------------------------------------------------------
+
+                                 %this ifelse is the walls
+                        if y_coord < obj.branchArray(obj.currentBranch,4)%-28 %on straight path
+                            %bound x by [457, 475]
+                            if x_coord < obj.branchArray(obj.currentBranch,1) %457 too far left
+                                obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,1);
+                            elseif x_coord > obj.branchArray(obj.currentBranch,3) %475 %too far right
+                                obj.vectorPosition(1) = obj.branchArray(obj.currentBranch,3);
+                            end
+
+
+                        else%if obj.vectorPosition(2) >= obj.branchArray(obj.currentBranch,4)%-28
+                            %bound x by function of z
+                            if x_coord <= obj.branchArray(obj.currentBranch,2)%466 %left path
+                                if x_coord < obj.left_leftwall(y_coord,obj.currentBranch) %too far left
+                                    obj.vectorPosition(1) = obj.left_leftwall(y_coord,obj.currentBranch);%function of z
+                                elseif x_coord > obj.left_rightwall(y_coord,obj.currentBranch) %too far right
+                                    obj.vectorPosition(1) = obj.left_rightwall(y_coord,obj.currentBranch); %function of z
+                                end
+                            else%if x_coord > obj.branchArray(obj.currentBranch,2)%466 %right path
+                                if x_coord < obj.right_leftwall(y_coord,obj.currentBranch) %too far left
+                                    obj.vectorPosition(1) = obj.right_leftwall(y_coord,obj.currentBranch);%function of z
+                                elseif x_coord > obj.right_rightwall(y_coord,obj.currentBranch) %too far right
+                                    obj.vectorPosition(1) = obj.right_rightwall(y_coord,obj.currentBranch); %function of z
+                                end
+                            end
+                        end
+                        %---------------------------------------------------------------------------------
+                             %obj.vectorPosition
+    %             obj.vertices(obj.choosebranch_h.Value,end)
+                         if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
+
+                                obj.newTrial();
+                         end  
+
+                     end
         
-            if obj.logOnUpdate
-                str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
-                if ~strcmp(str, obj.update)
-                    obj.update = str;
-                    obj.log(str);
+                    if obj.logOnUpdate
+                        str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                        if ~strcmp(str, obj.update)
+                            obj.update = str;
+                            obj.log(str);
+                        end
+
+                    end
                 end
-                
-            end
 %             linear = toc;%av = 0.001
 %             disp([linear,obj.enabled])%monitors,{192.168.0.11;0},hardware,0
         end
