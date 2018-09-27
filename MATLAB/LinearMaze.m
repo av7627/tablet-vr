@@ -1415,7 +1415,7 @@ classdef LinearMaze < handle
                 end
                 
             end
-%             linear = toc;%av = 0.001
+             %linear = toc%av = 0.001
 %             disp([linear,obj.enabled])%monitors,{192.168.0.11;0},hardware,0
         end
         
