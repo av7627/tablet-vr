@@ -1350,9 +1350,7 @@ classdef LinearMaze < handle
                     obj.nodes.push(obj.speed / obj.nodes.fps);
                 elseif obj.enabled  %hardware on, obj enabled
                      
-                    obj.sender.send(sprintf(...
-                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
-                    obj.addresses);
+                    
                 
 %                     if ~isempty(obj.textBox_speed_h.String)
 %                         obj.steeringPushfactor = obj.csvDataTable{obj.trial,8} * .05;%str2double(obj.textBox_speed_h.String)*.05;%steering factor based off speed textbox and random 0.05 number
@@ -1397,6 +1395,9 @@ classdef LinearMaze < handle
                         end
                     end
                     %---------------------------------------------------------------------------------
+                    obj.sender.send(sprintf(...
+                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                    obj.addresses);
                          %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
                      if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
