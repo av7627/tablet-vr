@@ -820,16 +820,17 @@ classdef LinearMaze < handle
             
             %obj.ActualSide = preset; %this is to see if the side chosen was correct or not for the reward
             if preset < rando %left
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.newGUI_figurehandle.SpatialFrequencyDropDown.Value ,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
                 obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
                 obj.gratingSideArray(obj.trial) = 0;
             else%if side == 3%right
-                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.newGUI_figurehandle.SpatialFrequencyDropDown.Value,',1;'), obj.addresses);
+                obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
                 obj.ActualSide = 3;%this is to see if the side chosen was correct or not for the reward
                 obj.gratingSideArray(obj.trial) = 1;
             end
+            
             %disp(obj.gratingSideArray)
         end
         
@@ -1153,7 +1154,7 @@ classdef LinearMaze < handle
                 %obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
             end
             
-            obj.setStimulus(); %put the stimulus in place with correct rotation
+            
             
             obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial); %change trial number in GUI
             
@@ -1169,6 +1170,7 @@ classdef LinearMaze < handle
             
             
             obj.updateFromCSV() %update input values from csv file
+            obj.setStimulus(); %put the stimulus in place with correct rotation
 
             
             %if movie mode, and random then switch the final node randomly
@@ -1305,13 +1307,10 @@ classdef LinearMaze < handle
 %                 obj.sender.send(sprintf('position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2), ...
 %                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
                 
-                %obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
-%                 obj.sender.send(Tools.compose([sprintf(...
-%                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
-%                 obj.addresses);
-                 obj.sender.send(sprintf(...
-                    'rotation,Main Camera,0,%.2f,0;', obj.yRotation-90 + obj.offsets), ...
-                 obj.addresses);
+                
+%                  obj.sender.send(sprintf(...
+%                     'rotation,Main Camera,0,%.2f,0;', obj.yRotation-90 + obj.offsets), ...
+%                  obj.addresses);
 
             end
         end
@@ -1394,6 +1393,15 @@ classdef LinearMaze < handle
                             end
                         end
                     end
+                    
+%                     obj.sender.send(sprintf(...
+%                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+%                     obj.addresses);
+                
+                obj.sender.send(Tools.compose([sprintf(...
+                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+                obj.addresses);
                     %---------------------------------------------------------------------------------
                     obj.sender.send(sprintf(...
                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
