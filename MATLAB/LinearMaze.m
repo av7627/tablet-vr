@@ -1403,6 +1403,9 @@ classdef LinearMaze < handle
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
                     %---------------------------------------------------------------------------------
+                    obj.sender.send(sprintf(...
+                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                    obj.addresses);
                          %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
                      if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
