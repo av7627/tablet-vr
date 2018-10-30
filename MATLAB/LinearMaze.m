@@ -64,7 +64,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.040;
+        rewardDuration =0.0%15;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -175,7 +175,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain = 1;
+        mGain = .5;
         
         mSpeed = 0;
         
@@ -516,6 +516,10 @@ classdef LinearMaze < handle
             else
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
             end
+<<<<<<< HEAD
+=======
+            obj.setNodes_movieMode(); %set a nodal path even with hardware on  
+>>>>>>> 0c8e2e22b846e72f176b753afac0ca8fc9437c03
             
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
@@ -1046,12 +1050,18 @@ classdef LinearMaze < handle
         function newTrial(obj)
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
+             obj.sender.send('enable,Plane,1;', obj.addresses);
+            obj.sender.send('enable,Planerock,1;', obj.addresses);
+            
             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
             if yo == 1 && ~isempty(obj.com)
                 obj.hardware = 2;
+                
             elseif ~isempty(obj.com)
                 obj.hardware = 0;
             end
+           
+            
             
             correctness = 1;
             if obj.hardware == 2
@@ -1188,7 +1198,7 @@ classdef LinearMaze < handle
                 
                 %obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
                 obj.sender.send(Tools.compose([sprintf(...
-                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'position,Main Camera,%.2f,3,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
             end
@@ -1302,8 +1312,8 @@ classdef LinearMaze < handle
                     obj.yRotation = 0;
                 end
                 
-%                 obj.x_yRotation = cosd(obj.yRotation);%This is done in onupdate now
-%                 obj.z_yRotation = sind(obj.yRotation);
+                obj.x_yRotation = cosd(obj.yRotation);
+                obj.z_yRotation = sind(obj.yRotation);
           
 %                 obj.sender.send(sprintf('position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(1,2), ...
 %                 'rotation,Main Camera,0,%.2f,0;',obj.yRotation))
@@ -1359,8 +1369,8 @@ classdef LinearMaze < handle
 %                     end
                     obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
                     
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - (cosd(obj.yRotation)*obj.steeringPushfactor);
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + (sind(obj.yRotation)*obj.steeringPushfactor);
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
                     
                     x_coord = obj.vectorPosition(1);
                     y_coord = obj.vectorPosition(2);
@@ -1400,7 +1410,7 @@ classdef LinearMaze < handle
 %                     obj.addresses);
                 
                 obj.sender.send(Tools.compose([sprintf(...
-                'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'position,Main Camera,%.2f,3,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
                     %---------------------------------------------------------------------------------
@@ -1460,7 +1470,7 @@ classdef LinearMaze < handle
             %right side of left branch
             
            if branch == 3 %branch 3
-            x = z/(-1.75) + 450;
+            x = z/(-1.75) + 449;
            elseif branch == 2 %branch 2 
             x = (z-1335)/(-5.33);
           
@@ -1474,7 +1484,7 @@ classdef LinearMaze < handle
             %left side of right branch
             
            if branch == 3 %branch 3
-            x = z/1.65 + 484.5;
+            x = z/1.7 + 486;
            elseif branch == 2 %branch 2 
             x = (z+1383)/5.3;
             
