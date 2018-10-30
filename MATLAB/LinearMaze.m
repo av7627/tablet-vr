@@ -101,7 +101,7 @@ classdef LinearMaze < handle
         filename_trial
         
         % scene - Name of an existing scene.
-        scene = 'linearMaze';
+        scene = 'linearMaze_v2';
 		
         % vertices - Vertices of the maze (x1, y1; x2, y2 ... in cm).
         %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
@@ -512,10 +512,11 @@ classdef LinearMaze < handle
             if obj.hardware == 0  %if not using steering 
                 %obj.setNodes_movieMode(); %set path for right or left. movie mode only
                 obj.vectorPosition = [nan,nan];
+                obj.setNodes_movieMode(); %set a nodal path even with hardware on  
             else
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
             end
-            obj.setNodes_movieMode(); %set a nodal path even with hardware on  
+            
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
@@ -1403,9 +1404,9 @@ classdef LinearMaze < handle
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
                     %---------------------------------------------------------------------------------
-                    obj.sender.send(sprintf(...
-                    'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
-                    obj.addresses);
+%                     obj.sender.send(sprintf(...
+%                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+%                     obj.addresses);
                          %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
                      if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
