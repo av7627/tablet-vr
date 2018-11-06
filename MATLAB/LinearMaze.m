@@ -47,7 +47,7 @@ classdef LinearMaze < handle
     
     properties
         % properties of the class
-        
+        trialNumberFactor = 0; %this factor is incremented whenever the end of the preset file is reached
         % intertrialBehavior - Whether to permit behavior during an intertrial.
         intertrialBehavior = true;
         
@@ -516,11 +516,8 @@ classdef LinearMaze < handle
             else
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
             end
-<<<<<<< HEAD
-=======
+
             obj.setNodes_movieMode(); %set a nodal path even with hardware on  
->>>>>>> 0c8e2e22b846e72f176b753afac0ca8fc9437c03
-            
             obj.scheduler = Scheduler();
             obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             
@@ -730,8 +727,8 @@ classdef LinearMaze < handle
             handle_mouseChoice = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to mouseChoiceGraph on GUI
             handle_choiceAccuracy = obj.newGUI_figurehandle.ChoiceAccuracyGraph;%handle to ChoiceAccuracyGraph on GUI
             
-            lastTrial = obj.trial - 1; %this is because we care about plotting the previous trial
-            
+            lastTrial = obj.trial - 1 + obj.trialNumberFactor*height(obj.csvDataTable); %this is because we care about plotting the previous trial
+            disp(lastTrial)
             if lastTrial < 10 %first ten trials
                 ylim(handle_mouseChoice,[0 ,lastTrial]); %increase limit of mouseChoiceGraph trial # by 1
                 set(handle_mouseChoice,'ytick',[1:lastTrial]);%add trial number to graph
@@ -828,12 +825,12 @@ classdef LinearMaze < handle
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
                 obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
-                obj.gratingSideArray(obj.trial) = 0;
+                obj.gratingSideArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable)) = 0;
             else%if side == 3%right
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
                 obj.ActualSide = 3;%this is to see if the side chosen was correct or not for the reward
-                obj.gratingSideArray(obj.trial) = 1;
+                obj.gratingSideArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable)) = 1;
             end
             
             %disp(obj.gratingSideArray)
@@ -905,6 +902,7 @@ classdef LinearMaze < handle
 %                     end
 %                 end
         end
+        
         
         
         function touchPad(obj,data)             
@@ -1050,8 +1048,8 @@ classdef LinearMaze < handle
         function newTrial(obj)
             % LinearMaze.newTrial()
             % Send a reward pulse, play a tone, log data, pause.
-             obj.sender.send('enable,Plane,1;', obj.addresses);
-            obj.sender.send('enable,Planerock,1;', obj.addresses);
+%             obj.sender.send('enable,Plane,1;', obj.addresses);
+%             obj.sender.send('enable,Planerock,1;', obj.addresses);
             
             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
             if yo == 1 && ~isempty(obj.com)
@@ -1067,10 +1065,10 @@ classdef LinearMaze < handle
             if obj.hardware == 2
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2)
                     sidechosen = 'left';
-                    obj.choiceArray(obj.trial,1) = 2; %the mouse went left
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),1) = 2; %the mouse went left
                 else
                     sidechosen = 'right';
-                    obj.choiceArray(obj.trial,1) = 4;%the mouse went right
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),1) = 4;%the mouse went right
                 end
                 
                 if obj.vectorPosition(1)<obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 2    %left
@@ -1083,7 +1081,7 @@ classdef LinearMaze < handle
                     
                     obj.log('note,reward');
                     
-                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 1; %correct side chosen
                     
                     
                 elseif obj.vectorPosition(1)> obj.branchArray(obj.currentBranch,2) && obj.ActualSide == 3  %right
@@ -1097,7 +1095,7 @@ classdef LinearMaze < handle
                     
                     obj.log('note,reward');
                     
-                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 1; %correct side chosen
                 else
                     %incorrect
                     
@@ -1108,15 +1106,15 @@ classdef LinearMaze < handle
                     obj.intertrialDuration = 3;
                     correctness = 0;
                     
-                    obj.choiceArray(obj.trial,2) = 0; %incorrect side chosen
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 0; %incorrect side chosen
                 end
             else%hardware off
                 if obj.nodes.yaw < 0
                     sidechosen = 'left';
-                    obj.choiceArray(obj.trial,1) = 2;%the mouse went left
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),1) = 2;%the mouse went left
                 else
                     sidechosen = 'right';
-                    obj.choiceArray(obj.trial,1) = 4;%the mouse went right
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),1) = 4;%the mouse went right
                 end
                 
                 if obj.nodes.yaw < 0 && obj.ActualSide == 2          %left
@@ -1127,7 +1125,7 @@ classdef LinearMaze < handle
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2)); %This makes a reward tone
                     obj.log('note,reward');
-                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 1; %correct side chosen
                     
                 elseif obj.nodes.yaw > 0 && obj.ActualSide == 3    %right
                     %correct
@@ -1136,7 +1134,7 @@ classdef LinearMaze < handle
                     obj.treadmill.reward(obj.rewardDuration);
                     %Tools.tone(obj.rewardTone(1), obj.rewardTone(2));% This makes a reward tone
                     obj.log('note,reward');
-                    obj.choiceArray(obj.trial,2) = 1; %correct side chosen
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 1; %correct side chosen
                 else
                     %incorrect
                     %Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
@@ -1146,7 +1144,7 @@ classdef LinearMaze < handle
                     obj.intertrialDuration = 3;
                     correctness = 0;
                     
-                    obj.choiceArray(obj.trial,2) = 0; %incorrect side chosen
+                    obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 0; %incorrect side chosen
                 end
             end
             
@@ -1157,17 +1155,22 @@ classdef LinearMaze < handle
             %obj.print('trial,%i', obj.trial); %print trial in command window and log in file
 
             obj.trial = obj.trial + 1; %increment the trial number
-            
-            try  %this makes a black screen whenever the end of the preset csv file has been reached                
-                obj.currentBranch = obj.csvDataTable{obj.trial,2};%find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
-            catch
-                obj.stop() 
-                %obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
+            if obj.trial > height(obj.csvDataTable)
+                obj.trial = 1;
+                obj.trialNumberFactor = obj.trialNumberFactor + 1;
             end
+                
+                
+%             try  %this makes a black screen whenever the end of the preset csv file has been reached                
+%                 
+%             catch
+%                 obj.stop() 
+%                 obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
+%             end
+            obj.currentBranch = obj.csvDataTable{obj.trial,2};%find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
             
             
-            
-            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial); %change trial number in GUI
+            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable)); %change trial number in GUI
             
             obj.MouseGraph(); %update the mouseGraph in GUI
 
@@ -1232,7 +1235,7 @@ classdef LinearMaze < handle
                 obj.addresses);
             
             if obj.logOnChange
-                obj.log('data,%i%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i',obj.trial, obj.treadmill.frame, obj.treadmill.step, distance, yaw, position(1), position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                obj.log('data,%i%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i',obj.trial+obj.trialNumberFactor*height(obj.csvDataTable), obj.treadmill.frame, obj.treadmill.step, distance, yaw, position(1), position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             end
         end
         
@@ -1245,7 +1248,7 @@ classdef LinearMaze < handle
             
             
             if obj.logOnFrame
-                obj.log('data,%i%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i',obj.trial, frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                obj.log('data,%i%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i',obj.trial+obj.trialNumberFactor*height(obj.csvDataTable), frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             end
             
             % Change the name to reflect frame number.
@@ -1427,7 +1430,7 @@ classdef LinearMaze < handle
                  end
         
             if obj.logOnUpdate
-                str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
                 if ~strcmp(str, obj.update)
                     obj.update = str;
                     obj.log(str);
@@ -1452,6 +1455,10 @@ classdef LinearMaze < handle
 %             %obj.csvDataTable{obj.trial+1:end,4} = value; %index is the 4nd column.
 %             LinearMaze.stimThickness(value)
 %         end
+%         function trial = trialFunc(trialNum,trialNumberFactor,length)
+%             trial = trialNum + trialNumberFactor * length;
+%         end
+        
 %         
         function x = left_leftwall(z,branch)
             %left side of left branch
