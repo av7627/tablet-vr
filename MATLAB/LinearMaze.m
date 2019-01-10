@@ -64,7 +64,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.0%15;
+        rewardDuration =0.1%15;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -101,7 +101,7 @@ classdef LinearMaze < handle
         filename_trial
         
         % scene - Name of an existing scene.
-        scene = 'linearMaze_v2';
+        scene = 'linearMaze_v3';
 		
         % vertices - Vertices of the maze (x1, y1; x2, y2 ... in cm).
         %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
@@ -175,7 +175,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain = .5;
+        mGain = 1;
         
         mSpeed = 0;
         
@@ -272,7 +272,7 @@ classdef LinearMaze < handle
     properties (Constant)
         
         % fps - Frames per seconds for time integration; should match VR game.
-        fps = 50
+        fps = 20
         
         % programVersion - Version of this class.
         programVersion = '20180525';
@@ -1413,7 +1413,7 @@ classdef LinearMaze < handle
 %                     obj.addresses);
                 
                 obj.sender.send(Tools.compose([sprintf(...
-                'position,Main Camera,%.2f,3,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'position,Main Camera,%.2f,6,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
                     %---------------------------------------------------------------------------------

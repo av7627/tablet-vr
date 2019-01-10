@@ -53,7 +53,7 @@ classdef ArduinoTreadmill < Event
         framePin = 14
         
         % rewardPin - Arduino pin where a reward may be triggered.
-        rewardPin = 8
+        rewardPin = 12
         
         % tapePin - Pin for IR sensing reflective tapes.
         tapePin = 15
