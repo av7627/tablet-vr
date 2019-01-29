@@ -43,7 +43,7 @@
 %2018-05-26+. Anil Verman.
 
 classdef LinearMaze < handle
-    %%
+    %% hardware,2,com,com4,monitors,{192.168.0.100;0;192.168.0.103;0;192.168.0.101;0}
     
     properties
         % properties of the class
@@ -115,7 +115,7 @@ classdef LinearMaze < handle
         %vertices of where branch splits or turns
         branchArray = [-5, 0, 5, -40
                    244 ,255, 266, -24 
-                   459,466,475,-28];
+                   457.5,467,477,-28];
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
@@ -175,7 +175,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain = 1;
+        mGain = 1.5;
         
         mSpeed = 0;
         
@@ -272,7 +272,7 @@ classdef LinearMaze < handle
     properties (Constant)
         
         % fps - Frames per seconds for time integration; should match VR game.
-        fps = 20
+        fps = 30
         
         % programVersion - Version of this class.
         programVersion = '20180525';
@@ -284,7 +284,7 @@ classdef LinearMaze < handle
     end
     %%
     methods
-        %% initialize function: LinearMaze('com', 'com5','monitors', {'192.168.0.111',0, '192.168.0.109',90,'192.168.0.110',-90,});
+        
         function obj = LinearMaze(app,varargin)
             %   Controller for a liner-maze.
              %  offset1, ip2, offset2, ...}, ...)
@@ -294,7 +294,7 @@ classdef LinearMaze < handle
             %LinearMaze(monitors,{192.168.0.111;0;192.168.0.109;90;192.168.0.110;-90},hardware,0/2);
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
             
-            %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
+            %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,2,com,com5
             
             obj.newGUI_figurehandle = app; %this is the handle for the app. to set values from CSV
             
@@ -356,13 +356,15 @@ classdef LinearMaze < handle
  
             % Create a log file. Time based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
-            session = sprintf([mouseName,'_VR_TimeBased%s'], datestr(now, 'yyyymmddHHMMSS'));
+            session = sprintf([mouseName,'_VR_TimeBased_%s'], datestr(now, 'yyyymmddHHMM'));
+            session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
             obj.filename = fullfile(folder, sprintf('%s.csv', session));
             obj.fid = Files.open(obj.filename, 'a');
             
             % Create a log file. Trial based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TrialBased');
-            session = sprintf([mouseName,'_VR_TrialBased%s'], datestr(now, 'yyyymmddHHMMSS'));
+            session = sprintf([mouseName,'_VR_TimeBased_%s'], datestr(now, 'yyyymmddHHMM'));
+            session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
             obj.filename_trial = fullfile(folder, sprintf('%s.csv', session));
             obj.fid_trial = Files.open(obj.filename_trial, 'a');
             
@@ -1195,6 +1197,9 @@ classdef LinearMaze < handle
             else%obj.hardware == 2
                 
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);
+                if mod(obj.trial,2)~=0
+                    obj.vectorPosition(1) = obj.vectorPosition(1)+.1;
+                end
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.z_yRotation = 1;
                 obj.x_yRotation = 0;
@@ -1370,7 +1375,7 @@ classdef LinearMaze < handle
 %                     else
 %                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
 %                     end
-                    obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
+                    obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * 0.0185;
                     
                     obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
                     obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);

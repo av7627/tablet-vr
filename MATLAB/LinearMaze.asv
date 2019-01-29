@@ -43,7 +43,7 @@
 %2018-05-26+. Anil Verman.
 
 classdef LinearMaze < handle
-    %%
+    %% hardware,2,com,com4,monitors,{192.168.0.100;0;192.168.0.103;0;192.168.0.101;0}
     
     properties
         % properties of the class
@@ -101,7 +101,7 @@ classdef LinearMaze < handle
         filename_trial
         
         % scene - Name of an existing scene.
-        scene = 'linearMaze_v2';
+        scene = 'linearMaze_v3';
 		
         % vertices - Vertices of the maze (x1, y1; x2, y2 ... in cm).
         %vertices = [0,-100   0,-42   -35,-10 ; 255,-100    255,-30     240,-2  ;  467,-95   467,-33   446,-1];%of three branches. go left at first
@@ -115,7 +115,7 @@ classdef LinearMaze < handle
         %vertices of where branch splits or turns
         branchArray = [-5, 0, 5, -40
                    244 ,255, 266, -24 
-                   459,466,475,-28];
+                   457.5,467,477,-28];
         
         % resetNode - When resetNode is reached, re-start.
         resetNode = 3;
@@ -175,7 +175,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain = 1;
+        mGain = 1.5;
         
         mSpeed = 0;
         
@@ -272,7 +272,7 @@ classdef LinearMaze < handle
     properties (Constant)
         
         % fps - Frames per seconds for time integration; should match VR game.
-        fps = 20
+        fps = 30
         
         % programVersion - Version of this class.
         programVersion = '20180525';
@@ -356,7 +356,9 @@ classdef LinearMaze < handle
  
             % Create a log file. Time based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
-            session = sprintf([mouseName,'_VR_TimeBased%s'], datestr(now, 'yyyymmddHHMMSS'));
+            session = sprintf([mouseName,'_VR_TimeBased_%s'], datestr(now, 'yyyymmddHHMM'))
+%newStr = insertAfter(session,'_VR_TimeBased','yo')
+session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-',session(end-3:end)]
             obj.filename = fullfile(folder, sprintf('%s.csv', session));
             obj.fid = Files.open(obj.filename, 'a');
             
@@ -1195,6 +1197,9 @@ classdef LinearMaze < handle
             else%obj.hardware == 2
                 
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);
+                if mod(obj.trial,2)~=0
+                    obj.vectorPosition(1) = obj.vectorPosition(1)+.1;
+                end
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.z_yRotation = 1;
                 obj.x_yRotation = 0;
@@ -1413,7 +1418,7 @@ classdef LinearMaze < handle
 %                     obj.addresses);
                 
                 obj.sender.send(Tools.compose([sprintf(...
-                'position,Main Camera,%.2f,3,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
+                'position,Main Camera,%.2f,6,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
                     %---------------------------------------------------------------------------------
