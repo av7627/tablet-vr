@@ -955,6 +955,8 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
             
             
+            
+            
 %             if obj.stimSize_h.Value == 1 %thick            
 %                 obj.stimSize_string = 'Thick';
 %             else %thin
@@ -1386,9 +1388,9 @@ classdef LinearMaze < handle
         end
         
         function onChange(obj, position, distance, yaw)
-            LinearMaze.onChange(position, distance, yaw)
-            Update monitors with any change in position and rotation.
-            Create an entry in the log file if logOnChange == true.
+%             LinearMaze.onChange(position, distance, yaw)
+%             Update monitors with any change in position and rotation.
+%             Create an entry in the log file if logOnChange == true.
             
             obj.sender.send(Tools.compose([sprintf(...
                 'position,Main Camera,%.2f,20,%.2f;', position(1), position(2)), ...
