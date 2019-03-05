@@ -394,10 +394,14 @@ classdef LinearMaze < handle
                 obj.treadmill = ArduinoTreadmill(obj.com);
                 obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
             end
-            obj.treadmill.register('Frame', @obj.onFrame);
+            %obj.treadmill.register('Frame', @obj.onFrame);
             
             k = find(strcmpi(keys, 'stage'), 1);
-            obj.stage = values{k};
+            try
+                obj.stage = values{k};
+            catch
+                obj.stage = nan;
+            end
             switch obj.stage
                 case 'stage1'
                 case 'stage2'
@@ -412,7 +416,7 @@ classdef LinearMaze < handle
                 otherwise
                     obj.treadmill.register('Step', @obj.onStep);
             end
-            obj.treadmill.register('Tape', @obj.onTape);
+            %obj.treadmill.register('Tape', @obj.onTape);
             obj.treadmill.register('touchPad', @obj.touchPad);
                        
 
@@ -798,7 +802,7 @@ classdef LinearMaze < handle
         function delete(obj)
             % LinearMaze.delete()
             % Release all resources.
-            
+            obj.sender.send('enable,Blank,1;', obj.addresses);
             obj.treadmill.trigger = false;
             delete(obj.treadmill);
             delete(obj.scheduler);
@@ -1533,8 +1537,8 @@ classdef LinearMaze < handle
 %                     end
                     obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * 0.0185;
                     
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor)
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor)
                     
                     x_coord = obj.vectorPosition(1);
                     y_coord = obj.vectorPosition(2);
