@@ -83,10 +83,7 @@ classdef LinearMaze < handle
         % treadmill - Arduino controlled apparatus.
         treadmill
         
-%         comPortName = 'com5';
-%         com = 'com'
-%         so = [com,comPortName];
-%inputs = ['com', 'COM4', 'monitors', {'127.0.0.1', 0, '192.168.1.100', 90}]
+
     end
     
     properties (SetAccess = private)
@@ -263,7 +260,13 @@ classdef LinearMaze < handle
 %         right_rightwall
         csvFileName = 'LinearMaze_presets\'; %the preset file to set variables automatically
         
+        mouseName
         
+        stage
+        
+        dateCreated
+        
+        stage3Array = [1,1, 45,135];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
@@ -284,17 +287,17 @@ classdef LinearMaze < handle
     end
     %%
     methods
-        %% initialize function: LinearMaze('com', 'com5','monitors', {'192.168.0.111',0, '192.168.0.109',90,'192.168.0.110',-90,});
+        
         function obj = LinearMaze(app,varargin)
             %   Controller for a liner-maze.
              %  offset1, ip2, offset2, ...}, ...)
             %   Provide the serial port name of the treadmill (rotary encoder, pinch valve,
             %   photo-sensor, and lick-sensors assumed connected to an Arduino microcontroller
             %   running a matching firmware).
-            %LinearMaze(monitors,{192.168.0.111;0;192.168.0.109;90;192.168.0.110;-90},hardware,0/2);
+            %
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
             
-            %monitors,{10.255.33.234;0;169.234.24.24;90},hardware,0,com,com5
+            %monitors,{192.168.0.100;0},hardware,2,com,com4, stage,stage3
             
             obj.newGUI_figurehandle = app; %this is the handle for the app. to set values from CSV
             
@@ -316,19 +319,8 @@ classdef LinearMaze < handle
                 obj.com = values{k};
              end
            
-%             if obj.hardware == 0 %no hardware
-%                 obj.com = [];
-%                 obj.mSpeed = 25;
-%             elseif obj.hardware == 2%hardware on
-%                 obj.com = 'com5';
-%             end
-%             
-            
 
 
-
-
-            
             k = find(strcmpi(keys, 'monitors'), 1);
             if isempty(k)
                 monitors = '{127.0.0.1;0}';
@@ -351,20 +343,21 @@ classdef LinearMaze < handle
             obj.sender = UDPSender(32000);
             
             %get mouse name for log files
-            mouseName = obj.newGUI_figurehandle.EnterMouseNameEditField.Value;
+            obj.mouseName = obj.newGUI_figurehandle.EnterMouseNameEditField.Value;
             
  
             % Create a log file. Time based
+            obj.dateCreated = datestr(now, 'yyyymmddHHMM');
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
-            session = sprintf([mouseName,'_VR_TimeBased_%s'], datestr(now, 'yyyymmddHHMM'))
-%newStr = insertAfter(session,'_VR_TimeBased','yo')
-session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-',session(end-3:end)]
+            session = sprintf([obj.mouseName,'_VR_TimeBased_%s'], obj.dateCreated);
+            session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
             obj.filename = fullfile(folder, sprintf('%s.csv', session));
             obj.fid = Files.open(obj.filename, 'a');
             
             % Create a log file. Trial based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TrialBased');
-            session = sprintf([mouseName,'_VR_TrialBased%s'], datestr(now, 'yyyymmddHHMMSS'));
+            session = sprintf([obj.mouseName,'_VR_TimeBased_%s'], obj.dateCreated);
+            session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
             obj.filename_trial = fullfile(folder, sprintf('%s.csv', session));
             obj.fid_trial = Files.open(obj.filename_trial, 'a');
             
@@ -402,87 +395,32 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
                 obj.treadmill.bridge.register('ConnectionChanged', @obj.onBridge);
             end
             obj.treadmill.register('Frame', @obj.onFrame);
-            obj.treadmill.register('Step', @obj.onStep);
+            
+            k = find(strcmpi(keys, 'stage'), 1);
+            obj.stage = values{k};
+            switch obj.stage
+                case 'stage1'
+                case 'stage2'
+                    obj.treadmill.register('Step', @obj.stage2);
+                case 'stage3'
+                    obj.treadmill.register('Step', @obj.stage3);
+                    
+                    obj.sender.send(Tools.compose([sprintf(...
+                        'position,Main Camera,%.2f,6,%.2f;', 467, -45), ...
+                        'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+                        obj.addresses);
+                otherwise
+                    obj.treadmill.register('Step', @obj.onStep);
+            end
             obj.treadmill.register('Tape', @obj.onTape);
             obj.treadmill.register('touchPad', @obj.touchPad);
                        
-%     Listen for incoming data:
-%       bridge.register('DataReceived', @fcn)
-%       function fcn(data)
-%           fprintf('Pin: %i. State: %i. Count: %i.\n', data.Pin, data.State, data.Count);
-%       end
-            %set up listener for sparkfun touch pad:
-%            
-             %obj.treadmill.bridge.register(3,@obj.touchPad); %touchPad(obj) is the callback function for the touchPad
-%             disp('face')
-            
-            % Release resources when the figure is closed.
-%             obj.figureHandle = figure('Name', mfilename('Class'), 'MenuBar', 'none', 'NumberTitle', 'off','Position', [100, 100, 100, 100],'DeleteFcn', @(~, ~)obj.delete());
-%             h(1) = uicontrol('Style', 'PushButton', 'String', 'Stop',  'Callback', @(~, ~)obj.stop());
-%             h(2) = uicontrol('Style', 'PushButton', 'String', 'Start', 'Callback', @(~, ~)obj.start());
-%             h(3) = uicontrol('Style', 'PushButton', 'String', 'Reset', 'Callback', @(~, ~)obj.reset());
-%             
-%             h(4) = uicontrol('Style', 'PushButton', 'String', 'Log text above', 'Callback', @(~, ~)obj.onLogButton());
-%             h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-%             h(5) = uicontrol('Style', 'Edit');
-%             
-%             h(6) = uicontrol('Style', 'popup',...
-%                'String', {'branch1', 'branch2','branch3'},...
-%                'Callback', @(~,~)obj.chooseBranch());
-%                          
-%             h(7) = uicontrol('Style', 'PushButton', 'String', 'SetSpeed above (default:25)', 'Callback', @(~, ~)obj.textSpeed());
-%             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-%             h(8) = uicontrol('Style', 'Edit');
-%                          
-%             h(9) = uicontrol('Style', 'popup',...
-%                'String', {'(DoesntWork)steering on', '(DoesntWork)tempMovieMode'},...
-%                'Callback', @(~,~)obj.tempMovie()); %broken dont use. may take out 
-%        
-%             h(10) = uicontrol('Style', 'popup',...
-%                'String', {'MovieMode: random', 'MovieMode: left','MovieMode: right'},'Callback', @(~,~)obj.ManualDirection()); 
-%             h(11) = uicontrol('Style', 'popup',...
-%                'String', {'steeringoff:4/4', 'steeringoff:3/4','steeringoff:2/4','steeringoff:1/4'},'Callback', @(~,~)obj.tempMovie()); 
-% 
-% %             h(12) = uicontrol('Style', 'popup',...
-% %                'String', {'GratingRandom', 'GratingLeft','GratingRight','GratingOff'},'Callback',@(~, ~)obj.ManualGratingSide()); 
-% %            
-% %             h(13) = uicontrol('Style', 'PushButton', 'String', 'Set Rotation above (default:0 deg)', 'Callback', @(~, ~)obj.textRotation());
-% %             %h(4) = uicontrol('Style', 'PushButton', 'String', 'choose Branch (1-number)', 'Callback', @(~, ~)obj.chooseBranch());
-% %             h(14) = uicontrol('Style', 'Edit');
-%            
-% %             h(15) = uicontrol('Style', 'popup',...
-% %                'String', {'Grating:Thick', 'Grating:Thin'},'Callback', @(~, ~)obj.stimThickness()); 
-%            
-%             p = get(h(1), 'Position');
-%             %set(h, 'Position', [p(1:2), 4 * p(3), p(4)]);
-%             %set(h(8:14), 'Position', [300+p(1),p(2), 4 * p(3), p(4)]);
-%             align(h, 'Left', 'Fixed', 0.5 * p(1));
-%             %align(h(8:14), 'Right', 'Fixed', 0.5 * p(1));
-%             
-%             obj.textBox_h = h(5);
-%             obj.choosebranch_h = h(6);
-% %             obj.textBox_speed_h = h(8);
-%             obj.tempMovieMode_h = h(9);
-%             obj.movieDirection_h = h(10);
-%             obj.choiceDistance_h = h(11);
-%             
-%             %obj.gratingSide_h = h(12);
-%             %obj.textBox_stimRotation_h = h(14);
-%             %obj.stimSize_h = h(15);
-%             
-%             set(obj.figureHandle, 'Position', [obj.figureHandle.Position(1), obj.figureHandle.Position(2), 4 * p(3) + 2 * p(1), 2 * numel(h) * p(4)])
-%             
-            
-            
-%             if obj.hardware == 2 (I put this function in onUpdate)
-%                 obj.scheduler.repeat(@obj.steeringPush, 1 / obj.fps);%if hardware then use steeringPush (maybe combine this with onUpdate)
-%             end
 
             obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
 
             % Initialize nodes.
             obj.nodes = Nodes();
-            obj.nodes.register('Change', @(position, distance, yaw, rotation)obj.onChange(position, distance, yaw));
+            %obj.nodes.register('Change', @(position, distance, yaw, rotation)obj.onChange(position, distance, yaw));
             obj.nodes.register('Lap', @(lap)obj.onLap);
             obj.nodes.register('Node', @obj.onNode);
 
@@ -515,17 +453,175 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
                 %obj.setNodes_movieMode(); %set path for right or left. movie mode only
                 obj.vectorPosition = [nan,nan];
                 obj.setNodes_movieMode(); %set a nodal path even with hardware on  
+                obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
             else
                 obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);%first update from csv set vector Position for steering wheel
             end
 
             obj.setNodes_movieMode(); %set a nodal path even with hardware on  
             obj.scheduler = Scheduler();
-            obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
-            
             
             obj.setStimulus();%put the stimulus in place with correct rotation
+            
+            switch obj.stage
+                case 'stage1'
+                    %obj.sender.send('enable,Blank,1;', obj.addresses);
+                    obj.scheduler.repeat(@obj.stage1,30);
+                case 'stage2'
+                    
+                case 'stage3'
+                    obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
+                    obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
+                    obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
+                    obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
+                    %turn off thick
+                    obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+                    %turn off all gray cylinders
+                    obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
+                    obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
+                    obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
+                    obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+                    %turn of stage3 Stim
+                    obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    
+                otherwise
+                    obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
+            end
+            
+            
 
+        end
+        function stage1(obj)
+            %turn on blank screen
+            %give water every 30 sec
+            if obj.enabled
+                obj.treadmill.reward(obj.rewardDuration);
+                'reward'
+                obj.log('note,reward');
+            end
+        end
+        
+        function stage2(obj, step)
+            %blank screen
+            %turn wheel some degrees to recieve water
+             if obj.enabled
+                 obj.yRotation = obj.yRotation + step * obj.gain;
+                 
+                 if obj.yRotation < 70 || obj.yRotation > 110
+                     
+                     obj.treadmill.reward(obj.rewardDuration);
+                     'reward'
+                     obj.log('note,reward');
+                     obj.yRotation = 90;
+                     
+                     obj.trial = obj.trial + 1;
+                     obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
+                 end
+                 
+                 if obj.logOnUpdate
+                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                     if ~strcmp(str, obj.update)
+                         obj.update = str;
+                         obj.log(str);
+                     end
+                     
+                 end
+             end
+
+        end
+        
+        function stage3(obj,step) 
+            %take input from encoder and rotate camera in front of the
+            %decision point. if it exceeds error angle, play error tone. if
+            %it exceeds correct side, give water, reset trial.
+            if obj.enabled
+                obj.yRotation = obj.yRotation + step * obj.gain;
+                
+                if obj.yRotation > 135
+                    obj.yRotation = 135;
+                elseif obj.yRotation < 45
+                    obj.yRotation = 45;
+                end
+                
+                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                if obj.yRotation == obj.stage3Array(3) && obj.stage3Array(1)%error side
+                    %play error tone
+                    'error tone'
+                    obj.stage3Array(1) = 0;
+                elseif obj.yRotation == obj.stage3Array(4) %correct side chosen
+                    obj.stage3_newTrial()
+                end
+            end
+      
+        end
+   
+        
+        function stage3_newTrial(obj)
+            obj.trial = obj.trial + 1;
+            obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
+            
+            obj.treadmill.reward(obj.rewardDuration);
+            'reward'
+            obj.log('note,reward');
+            
+            
+            %blank screen
+            if obj.intertrialBehavior
+                obj.blank(obj.intertrialDuration);
+            else
+                obj.pause(obj.intertrialDuration);
+            end
+            
+           
+           
+            obj.stage3_setStim()
+            obj.stage3Array(1) = 1;
+            
+            obj.yRotation = 90;
+            obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', 0), obj.addresses);
+        end
+        
+        function stage3_setStim(obj)
+         %if correct the first time. Random grating side
+         %if incorrect first time. grating on the same side
+         %initially turn off all stimulus. turn off thin
+        
+         
+         if obj.stage3Array(1) %correct
+             %random side
+             rnd = rand();
+             if rnd>.5 %left
+                 obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+                 obj.sender.send('enable,Branch3RightGray,1;', obj.addresses);
+                 
+                 obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
+                 obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
+                    
+                 obj.stage3Array(3:4) = [135,45];
+             else %right
+                 obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
+                obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+                
+                obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+                obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    
+                obj.stage3Array(3:4) = [45,135];
+             end
+         else %incorrect
+             %same side
+             
+         end
+            
         end
         
         %% these functions are for the GUI
@@ -626,7 +722,8 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
             % Reset position, rotation, frame count and encoder steps.
             
             branchNum = find(strcmp(obj.newGUI_figurehandle.BranchNumberDropDown.Items,obj.newGUI_figurehandle.BranchNumberDropDown.Value));
-            %obj.trial = 1;
+            
+            
             if obj.hardware == 0
                 obj.nodes.vertices = obj.vertices(branchNum,:);
             elseif obj.hardware == 2
@@ -646,21 +743,22 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
         function start(obj)
             % LinearMaze.start()
             % Send high pulse to trigger-out and enable behavior.
-            
-            obj.stopDuringBlank = false;
-            % Load an existing scene.
-            obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
-            
-            % Hide user menu.
-            obj.sender.send('enable,Menu,0;', obj.addresses);
-            
-            % Hide blank and enable external devices and behavior.
-            obj.sender.send('enable,Blank,0;', obj.addresses);
-            
-            % Send a high pulse to trigger-out.
-            obj.treadmill.trigger = true;
-            obj.enabled = true;
-            obj.print('note,start');
+           
+                    obj.stopDuringBlank = false;
+                    % Load an existing scene.
+                    obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
+                    
+                    % Hide user menu.
+                    obj.sender.send('enable,Menu,0;', obj.addresses);
+                    
+                    % Hide blank and enable external devices and behavior.
+                    obj.sender.send('enable,Blank,0;', obj.addresses);
+                    
+                    % Send a high pulse to trigger-out.
+                    obj.treadmill.trigger = true;
+                    obj.enabled = true;
+                    obj.print('note,start');
+           
         end
         
         function stop(obj)
@@ -693,7 +791,7 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
            %send pulse to water pump
            
            obj.treadmill.reward(obj.rewardDuration);
-           obj.log('note,reward');
+           obj.log('note,Manual reward');
           
         end
         
@@ -712,18 +810,74 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
             LinearMaze.export(obj.filename);
             LinearMaze.export(obj.filename_trial);
             
+            obj.trialGraph%plot trial xy data and save in folder
+        end
+        
+        function trialGraph(obj)
+            %make a folder with figures that show the path taken by the
+            %user for each trial
+            
+            data = xlsread(obj.filename);
+            XYdata = [data(:,3),data(:,8:12)];
+      
+            rows = 1;
+            while true %take out any rows containing NaNs
+                if rows == length(XYdata)+1
+                    break
+                elseif sum(isnan(XYdata(rows,:))) ~= 0%contains nan
+                    XYdata(rows,:) = [];
+                else
+                    rows= rows+1;
+                end
+            end
+            
+            realXYList = zeros(length(XYdata),2); %make list of actual XY position. Choose movie or hardware mode position as needed
+            for entries = 1:length(XYdata)
+                if XYdata(entries,end) == 0 %if moviespeed is zero take coords from hardware columns
+                    realXYList(entries,1:2) = XYdata(entries,end-2:end-1);
+                else%if moviespeed is not zero take coords from moviemode columns
+                    realXYList(entries,1:2) = XYdata(entries,2:3);
+                end
+            end
+            realXYList = [XYdata(:,1), realXYList];%append trial numbers to array
             
             
-%             if ishandle(obj.figureHandle)             %i think this is
-%                                                         for the old gui
-%                 set(obj.figureHandle, 'DeleteFcn', []);
-%                 delete(obj.figureHandle);
-%             end
+            numTrials = realXYList(end,1); %get max number of trials from file
+            for trials = 1:numTrials
+                newMatrix{trials} = realXYList(realXYList(:,1) == trials,:);
+            end%separate based on trial
             
+            folder = fullfile(getenv('USERPROFILE'), 'Documents');
+            session = sprintf('trialFigures/%s', obj.dateCreated);
+            session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
+            filename_plots = fullfile(folder, sprintf('%s', session));
+            mkdir(filename_plots)%make new folder for this session
+            
+            
+            for trials = 1:numTrials
+                list = newMatrix{trials};
+                
+                plot(list(:,2),list(:,3),'.')%plot xy data as points
+                title(sprintf('trial %i',trials))
+                xlim([440 494])
+                ylim([-100 5])
+                
+                yticks([-100 -50 0])
+                yticklabels([0 50 100])
+                
+                xticks([445 467 489])
+                xticklabels([-22 0 22])
+                
+                session = sprintf([obj.mouseName,'_trial_%i'],trials);
+                file = fullfile(filename_plots, sprintf('%s.png', session));
+                saveas(gcf,file)
+            end
+            
+             close all
         end
         
         function MouseGraph(obj)
-            %add another number to y-axis
+            %add another number to y-axis on graphic in GUI
             %add marker to right/left indicating right/wrong
             %this function gets called in newTrial()
             handle_mouseChoice = obj.newGUI_figurehandle.MouseChoiceGraph; %handle to mouseChoiceGraph on GUI
@@ -1056,6 +1210,7 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
             yo =find(strcmp(obj.newGUI_figurehandle.SteeringOnOffDropDown.Items,obj.newGUI_figurehandle.SteeringOnOffDropDown.Value));
             if yo == 1 && ~isempty(obj.com)
                 obj.hardware = 2;
+                obj.mSpeed = 0;
                 
             elseif ~isempty(obj.com)
                 obj.hardware = 0;
@@ -1151,7 +1306,7 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
             end
             
             %log last trial
-            obj.log('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+            %obj.log('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial,obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
             obj.log_trial('%i,%i,%i,%s,%s,%.2f,%i,%i,%i', obj.trial,correctness,obj.ActualSide,sidechosen,obj.stimSize_string,obj.stimRot-90,obj.currentBranch,obj.hardware,obj.steeringLength); 
             
             %obj.print('trial,%i', obj.trial); %print trial in command window and log in file
@@ -1178,7 +1333,7 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
 
             
             %try  %this makes a black screen whenever the end of the preset csv file has been reached                
-                obj.steeringLength = obj.csvDataTable{obj.trial,9};%find(strcmp(obj.newGUI_figurehandle.SteeringLengthDropDown.Items,obj.newGUI_figurehandle.SteeringLengthDropDown.Value));
+            obj.steeringLength = obj.csvDataTable{obj.trial,9};%find(strcmp(obj.newGUI_figurehandle.SteeringLengthDropDown.Items,obj.newGUI_figurehandle.SteeringLengthDropDown.Value));
             %catch
 %                 obj.stop() 
 %                 obj.newGUI_figurehandle.debugEditField.Value = 'end of preset csv file reached';
@@ -1188,6 +1343,13 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
             obj.updateFromCSV() %update input values from csv file
             obj.setStimulus(); %put the stimulus in place with correct rotation
 
+            obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);
+            if mod(obj.trial,2)~=0
+                obj.vectorPosition(1) = obj.vectorPosition(1)+.1;
+            end
+            obj.yRotation = 90; %reset rotation on new trial
+            obj.z_yRotation = 1;
+            obj.x_yRotation = 0;
             
             %if movie mode, and random then switch the final node randomly
             %left or right
@@ -1195,21 +1357,15 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
                 obj.setNodes_movieMode(); %set path left or right for movie mode camera
 
             else%obj.hardware == 2
-                
-                obj.vectorPosition = obj.vertices(obj.currentBranch,1:2);
-                if mod(obj.trial,2)~=0
-                    obj.vectorPosition(1) = obj.vectorPosition(1)+.1;
-                end
-                obj.yRotation = 90; %reset rotation on new trial
-                obj.z_yRotation = 1;
-                obj.x_yRotation = 0;
-                
+
                 %obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
                 obj.sender.send(Tools.compose([sprintf(...
                 'position,Main Camera,%.2f,3,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                 obj.addresses);
             end
+            
+          
             
             %Disable movement and show blank screen for the given duration.
             if obj.intertrialBehavior
@@ -1230,12 +1386,12 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
         end
         
         function onChange(obj, position, distance, yaw)
-            % LinearMaze.onChange(position, distance, yaw)
-            % Update monitors with any change in position and rotation.
-            % Create an entry in the log file if logOnChange == true.
+            LinearMaze.onChange(position, distance, yaw)
+            Update monitors with any change in position and rotation.
+            Create an entry in the log file if logOnChange == true.
             
             obj.sender.send(Tools.compose([sprintf(...
-                'position,Main Camera,%.2f,1,%.2f;', position(1), position(2)), ...
+                'position,Main Camera,%.2f,20,%.2f;', position(1), position(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], yaw + obj.offsets), ...
                 obj.addresses);
             
@@ -1375,7 +1531,7 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
 %                     else
 %                         obj.steeringPushfactor = 1.25; %= 25*.05. This is the default push factor if nothing is put in the text box
 %                     end
-                    obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * .05;
+                    obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * 0.0185;
                     
                     obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
                     obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
@@ -1427,6 +1583,14 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
 %                     obj.addresses);
                          %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
+                    if obj.logOnUpdate
+                        str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                        if ~strcmp(str, obj.update)
+                            obj.update = str;
+                            obj.log(str);
+                        end
+                
+                    end
                      if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
 
                             obj.newTrial();
@@ -1533,4 +1697,37 @@ session = [session(1:end-8),'/',session(end-7:end-6),'/',session(end-5:end-4),'-
     end
 end
 
-%#ok<*NASGU>
+% filename = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\VR_TimeBased\test_VR_TimeBased_2019-01-30_1907.csv';
+% data = xlsread(filename);
+% XYdata = [data(:,3),data(:,8:12)];
+% 
+% 
+% rows = 1;
+% while true %take out any rows containing NaNs
+%     if rows == length(XYdata)+1
+%         break
+%     elseif sum(isnan(XYdata(rows,:))) ~= 0%contains nan
+%         XYdata(rows,:) = [];
+%     else
+%         rows= rows+1;
+%     end
+% end
+% 
+% realXYList = zeros(length(XYdata),2); %make list of actual XY position. Choose movie or hardware mode position as needed
+%  for entries = 1:length(XYdata)
+%      if XYdata(entries,end) == 0
+%          realXYList(entries,1:2) = XYdata(entries,end-2:end-1);
+%      else
+%          realXYList(entries,1:2) = XYdata(entries,2:3);
+%      end
+%  end
+%  realXYList = [XYdata(:,1), realXYList]%append trial numbers to array
+% 
+%  
+% numTrials = realXYList(end,1);
+% for trials = 1:numTrials
+%     newMatrix{trials} = realXYList(realXYList(:,1) == trials,:);
+% end%separate based on trial
+%      
+% 
+% %do plot stuff with 'newMatrix'
