@@ -43,7 +43,7 @@
 %2018-05-26+. Anil Verman.
 
 classdef LinearMaze < handle
-    %% hardware,2,com,com4,monitors,{192.168.0.100;0;192.168.0.103;0;192.168.0.101;0}
+    %% hardware,2,com,com5,monitors,{192.168.0.100;0;192.168.0.103;0;192.168.0.101;0}
     
     properties
         % properties of the class
