@@ -343,7 +343,8 @@ classdef LinearMaze < handle
             obj.sender = UDPSender(32000);
             
             %get mouse name for log files
-            obj.mouseName = obj.newGUI_figurehandle.EnterMouseNameEditField.Value;
+            obj.mouseName = [obj.newGUI_figurehandle.EnterMouseNameEditField.Value,'_gain',num2str(obj.mGain), '_session',num2str(obj.newGUI_figurehandle.SessionNumberDropDown.Value)];
+            
             
  
             % Create a log file. Time based
@@ -1539,8 +1540,8 @@ classdef LinearMaze < handle
 %                     end
                     obj.steeringPushfactor = obj.newGUI_figurehandle.EnterSpeedEditField.Value * 0.0185;
                     
-                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor)
-                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor)
+                    obj.vectorPosition(1) = obj.vectorPosition(1) - (obj.x_yRotation*obj.steeringPushfactor);
+                    obj.vectorPosition(2) = obj.vectorPosition(2) + (obj.z_yRotation*obj.steeringPushfactor);
                     
                     x_coord = obj.vectorPosition(1);
                     y_coord = obj.vectorPosition(2);
