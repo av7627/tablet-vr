@@ -1,5 +1,7 @@
 clear; clc;
+
 Foldername = 'C:\Users\anilv\Downloads\VR_TrialBased\VR_TrialBased';
+
 names = ['zd48','zd54'];
 
 listing = dir(Foldername);%alphabatised with both names
@@ -7,15 +9,14 @@ listing = dir(Foldername);%alphabatised with both names
 numzd54 = 0;
  for i = 1:numel(listing) %this loop makes a list of mousenames, file paths, and dates created
   fn =  strcat(Foldername,'\',listing(i).name); %full file name
-  last = fn(1:end-4); %time stamp truncated (date is left still)
+
+
+
+  last = fn(1:end-9); %time stamp truncated (date is left still)
   
   if  str2double(last(end)) ~= sqrt(-1) && ~isnan(str2double(last(end)))
       files{i-numzd54,:} = fn;
-      date = last(end-9:end);
-      
-      date =  strcat(date(1:2),date(4:5),date(end-3:end));
-      dates(i-numzd54) = str2num(date);
-      
+      dates{i-numzd54,:} = last(end-9:end);
       MouseNames{i-numzd54,:} = listing(i).name(1:4);
   else
       numzd54 = numzd54 +1;
@@ -24,7 +25,9 @@ numzd54 = 0;
   
   
  end
- Filelist = [MouseNames,files];
+
+ Filelist = [MouseNames,files ,dates];
+
  
  
  %sperate names
@@ -107,5 +110,45 @@ save('savefile.mat', 'zd54Table');
 % %     xlabel('days')
 % %     ylabel('number of trials')
 % end
+
+zd48List = zd48List(datesZD48_order,:);
+
+[datesZD54_sorted, datesZD54_order] = sort(dates(Rangezd54)); 
+zd54List = zd54List(datesZD54_order,:); %sorted file paths based off date
+
+ plotTrialsPerDay(zd48List)
+ %plotTrialsPerDay(zd54List)
+
+%% get the trial numbers for the two session per day and then plot them
+function plotTrialsPerDay(List)
+
+
+    for i = 1:numel(List)
+        
+        filename = List{i,:}
+        
+        fid = fopen(filename,'rt');
+        data=textscan(fid, '%f %s',...
+            'headerlines', 5,...
+            'delimiter',',',...
+            'TreatAsEmpty','NA',...
+            'EmptyValue', NaN);
+        fclose(fid);
+        
+        %get trial number
+        try
+            lastLine = data{2}{end,1};
+            NumberTrials(i) = str2num(lastLine(8:10))
+        catch
+            NumberTrials(i) = NaN
+            %delete(filename)
+        end
+        
+        
+    end
+    
+    plot(1:length(NumberTrials),NumberTrials)
+end
+
 
 

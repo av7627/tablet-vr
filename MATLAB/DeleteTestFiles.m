@@ -1,12 +1,14 @@
-%delete all 'test' log files in TrialBased log folder
+
+ %delete all 'test' log files in TrialBased log folder
 recycle on; %send files to recycle bin
 
-Foldername = 'C:\Users\anilv\Downloads\VR_TrialBased\VR_TrialBased';
+Foldername = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\VR_TrialBased';
 
 listing = dir(Foldername);
 
-% [r, inx]=sort({listing.date});
-% list = listing(inx);
+[r, inx]=sort({listing.date});
+list = listing(inx);
+
 
  for i = 1:numel(listing) %this loop deletes test files 
   fn =  strcat(Foldername,'\',listing(i).name);

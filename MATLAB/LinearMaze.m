@@ -43,7 +43,9 @@
 %2018-05-26+. Anil Verman.
 
 classdef LinearMaze < handle
-    %% hardware,2,com,com5,monitors,{192.168.0.100;0;192.168.0.103;0;192.168.0.101;0}
+
+    %% monitors,{192.168.0.100;0;192.168.0.103;-90;192.168.0.104;90},hardware,2,com,com4, stage,stage3
+
     
     properties
         % properties of the class
@@ -64,7 +66,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.1%15;
+        rewardDuration =0.0533%15;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -73,7 +75,7 @@ classdef LinearMaze < handle
         %errorTone - played when mouse makes a mistake
         errorTone = [2000, 1];
 
-
+        startTone = [500, .3];
         
 
         % tapeTrigger - Whether to initiate a new trial when photosensor
@@ -172,7 +174,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain = 1.5;
+        mGain =9;
         
         mSpeed = 0;
         
@@ -264,9 +266,11 @@ classdef LinearMaze < handle
         
         stage
         
+        stage3Record =0;%first number is number of trials, second number is number of errors 
+        
         dateCreated
         
-        stage3Array = [1,1, 45,135];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
+        stage3Array = [1,1, 65-20,115+20];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
@@ -298,6 +302,7 @@ classdef LinearMaze < handle
             %   Provide IP address of each monitor tablet and rotation offset for each camera.
             
             %monitors,{192.168.0.100;0},hardware,2,com,com4, stage,stage3
+            %monitors,{192.168.0.100;0;192.168.0.103;-90;192.168.0.104;90},hardware,2,com,com4, stage,stage3
             
             obj.newGUI_figurehandle = app; %this is the handle for the app. to set values from CSV
             
@@ -357,7 +362,7 @@ classdef LinearMaze < handle
             
             % Create a log file. Trial based
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TrialBased');
-            session = sprintf([obj.mouseName,'_VR_TimeBased_%s'], obj.dateCreated);
+            session = sprintf([obj.mouseName,'_VR_TrialBased_%s'], obj.dateCreated);
             session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
             obj.filename_trial = fullfile(folder, sprintf('%s.csv', session));
             obj.fid_trial = Files.open(obj.filename_trial, 'a');
@@ -411,7 +416,7 @@ classdef LinearMaze < handle
                     obj.treadmill.register('Step', @obj.stage3);
                     
                     obj.sender.send(Tools.compose([sprintf(...
-                        'position,Main Camera,%.2f,6,%.2f;', 467, -45), ...
+                        'position,Main Camera,%.2f,6,%.2f;', 467, -30), ...
                         'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                         obj.addresses);
                 otherwise
@@ -468,13 +473,18 @@ classdef LinearMaze < handle
             
             obj.setStimulus();%put the stimulus in place with correct rotation
             
+            
+            
             switch obj.stage
                 case 'stage1'
-                    %obj.sender.send('enable,Blank,1;', obj.addresses);
+                    obj.sender.send('enable,Blank,0;', obj.addresses);
                     obj.scheduler.repeat(@obj.stage1,30);
+                    
                 case 'stage2'
                     
                 case 'stage3'
+                    obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,0;', obj.addresses);
+                    
                     obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
                     obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
                     obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
@@ -500,6 +510,7 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
                 otherwise
+                    obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,1;', obj.addresses);
                     obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
             end
             
@@ -509,6 +520,7 @@ classdef LinearMaze < handle
         function stage1(obj)
             %turn on blank screen
             %give water every 30 sec
+            obj.sender.send('enable,Blank,1;', obj.addresses);
             if obj.enabled
                 obj.treadmill.reward(obj.rewardDuration);
                 'reward'
@@ -528,7 +540,7 @@ classdef LinearMaze < handle
                      'reward'
                      obj.log('note,reward');
                      obj.yRotation = 90;
-                     
+                     obj.blank(obj.intertrialDuration);
                      obj.trial = obj.trial + 1;
                      obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
                  end
@@ -552,17 +564,27 @@ classdef LinearMaze < handle
             if obj.enabled
                 obj.yRotation = obj.yRotation + step * obj.gain;
                 
-                if obj.yRotation > 135
-                    obj.yRotation = 135;
-                elseif obj.yRotation < 45
-                    obj.yRotation = 45;
+                if obj.yRotation > 115+20
+                    obj.yRotation = 115+20;
+                elseif obj.yRotation < 65-20
+                    obj.yRotation = 65-20;
                 end
                 
-                obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', obj.yRotation-90), obj.addresses);
+                obj.sender.send(Tools.compose([sprintf(...
+                        'position,Main Camera,%.2f,6,%.2f;', 467, -30), ...
+                        'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+                        obj.addresses);
+                    
                 if obj.yRotation == obj.stage3Array(3) && obj.stage3Array(1)%error side
                     %play error tone
-                    'error tone'
+                   
+                    Tools.tone(obj.errorTone(1), obj.errorTone(2));
+                    
+                    obj.stage3Record = obj.stage3Record + 1; %keep record of errors for log file
+                    
                     obj.stage3Array(1) = 0;
+                    %obj.blank(obj.intertrialDuration);
+                    stage3_newTrial(obj)
                 elseif obj.yRotation == obj.stage3Array(4) %correct side chosen
                     obj.stage3_newTrial()
                 end
@@ -572,20 +594,45 @@ classdef LinearMaze < handle
    
         
         function stage3_newTrial(obj)
+            if obj.stage3Array(1) ~= 0 %trial was correct
+                Tools.tone(300,1); %reward tone
+                pause(3); %pause for 3 seconds looking at blinking stim
+                
+                 obj.treadmill.reward(obj.rewardDuration);
+                 'reward'
+                 obj.log('note,reward');
+                 obj.blank(obj.intertrialDuration);
+            else
+                obj.blank(obj.intertrialDuration+2);
+                
+            end
             obj.trial = obj.trial + 1;
             obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
             
-            obj.treadmill.reward(obj.rewardDuration);
-            'reward'
-            obj.log('note,reward');
-            
+           
+            obj.log_trial('trial: %i. errors so far: %i. error/trial = %f', obj.trial, obj.stage3Record,obj.stage3Record/obj.trial);
             
             %blank screen
-            if obj.intertrialBehavior
-                obj.blank(obj.intertrialDuration);
-            else
-                obj.pause(obj.intertrialDuration);
-            end
+%             if obj.intertrialBehavior
+%                 obj.blank(obj.intertrialDuration);
+%             else
+%                 obj.pause(obj.intertrialDuration);
+%             end
+            
+            obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThin,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThin,0;', obj.addresses);
+            %turn off thick
+            obj.sender.send('enable,Branch1LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch1RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+            obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+            
             
            
            
@@ -593,7 +640,10 @@ classdef LinearMaze < handle
             obj.stage3Array(1) = 1;
             
             obj.yRotation = 90;
-            obj.sender.send(sprintf('rotation,Main Camera,0,%.2f,0;', 0), obj.addresses);
+            obj.sender.send(Tools.compose([sprintf(...
+                        'position,Main Camera,%.2f,6,%.2f;', 467, -30), ...
+                        'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
+                        obj.addresses);
         end
         
         function stage3_setStim(obj)
@@ -612,7 +662,7 @@ classdef LinearMaze < handle
                  obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
                  obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
                     
-                 obj.stage3Array(3:4) = [135,45];
+                 obj.stage3Array(3:4) = [115+20,65-20];
              else %right
                  obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
@@ -620,7 +670,7 @@ classdef LinearMaze < handle
                 obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
                 obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
-                obj.stage3Array(3:4) = [45,135];
+                obj.stage3Array(3:4) = [65-20,115+20];
              end
          else %incorrect
              %same side
@@ -816,7 +866,17 @@ classdef LinearMaze < handle
             LinearMaze.export(obj.filename_trial);
             
             obj.trialGraph%plot trial xy data and save in folder
+            obj.stageThreeGraphs();
         end
+        
+        function stageThreeGraphs(obj)
+           %Number of trials vs day
+           
+            
+            
+            
+        end
+        
         
         function trialGraph(obj)
             %make a folder with figures that show the path taken by the
@@ -858,11 +918,18 @@ classdef LinearMaze < handle
             filename_plots = fullfile(folder, sprintf('%s', session));
             mkdir(filename_plots)%make new folder for this session
             
-            
+           
+
             for trials = 1:numTrials
                 list = newMatrix{trials};
+                y = list(:,3);
                 
-                plot(list(:,2),list(:,3),'.')%plot xy data as points
+                
+                     plot(list(1:length(list(list<-33)),2),y(y<-33),'b.')%plot xy data as points before decision point
+                
+                     hold on
+                     plot(list(length(list(list<-33)):end,2),y(y>-33),'r.')%plot xy data as points
+                
                 title(sprintf('trial %i',trials))
                 xlim([440 494])
                 ylim([-100 5])
@@ -878,7 +945,7 @@ classdef LinearMaze < handle
                 saveas(gcf,file)
             end
             
-             close all
+             %close all
         end
         
         function MouseGraph(obj)
@@ -960,6 +1027,8 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
             
             
+            obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+            obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
             
             
 %             if obj.stimSize_h.Value == 1 %thick            
@@ -1109,6 +1178,10 @@ classdef LinearMaze < handle
             if duration == 0 && ~obj.stopDuringBlank
                 obj.sender.send('enable,Blank,0;', obj.addresses);
                 obj.enabled = true;
+                
+                %starting tone
+                Tools.tone(obj.startTone(1), obj.startTone(2));
+                
             elseif duration > 0
                 obj.enabled = false;
                 obj.sender.send('enable,Blank,1;', obj.addresses);
