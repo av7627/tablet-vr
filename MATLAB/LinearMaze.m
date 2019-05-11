@@ -923,29 +923,47 @@ classdef LinearMaze < handle
             for trials = 1:numTrials
                 list = newMatrix{trials};
                 y = list(:,3);
+                x = list(:,2);
                 
                 
-                     plot(list(1:length(list(list<-33)),2),y(y<-33),'b.')%plot xy data as points before decision point
+                     plot(list(1:length(x(y<-33)),2),y(y<-33),'b.')%plot xy data as points before decision point
                 
                      hold on
-                     plot(list(length(list(list<-33)):end,2),y(y>-33),'r.')%plot xy data as points
-                
+                     plot(list(length(x(y<-33))+1:end,2),y(y>-33),'r.')%plot xy data as points
+                     
+                     %make outline of the 3rd branch 
+                     plot([457,457],[-158,-28],'k')%left line
+                     plot([477,477],[-158,-28],'k')%right line
+                     plot([457,431],[-28,10],'k')%leftwall
+                     plot([477,503],[-28,10],'k')%rightwall
+                     plot([467,452],[-28,10],'k')%left inner wall
+                     plot([467,482],[-28,10],'k')%right inner wall
+                     
+                     %show where where the stimulus is on graph
+                     %plot(
+                     
+                     
+                     
+                     
+                     
+                     
+                     hold off
                 title(sprintf('trial %i',trials))
-                xlim([440 494])
+                xlim([430 504])
                 ylim([-100 5])
                 
                 yticks([-100 -50 0])
                 yticklabels([0 50 100])
-                
-                xticks([445 467 489])
-                xticklabels([-22 0 22])
+%                 
+                xticks([431 467 503])
+                xticklabels([-36 0 36])
                 
                 session = sprintf([obj.mouseName,'_trial_%i'],trials);
                 file = fullfile(filename_plots, sprintf('%s.png', session));
                 saveas(gcf,file)
             end
             
-             %close all
+             close all
         end
         
         function MouseGraph(obj)
@@ -1430,6 +1448,7 @@ classdef LinearMaze < handle
             obj.yRotation = 90; %reset rotation on new trial
             obj.z_yRotation = 1;
             obj.x_yRotation = 0;
+           
             
             %if movie mode, and random then switch the final node randomly
             %left or right
@@ -1652,7 +1671,11 @@ classdef LinearMaze < handle
 %                     obj.sender.send(sprintf(...
 %                     'position,Main Camera,%.2f,1,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
 %                     obj.addresses);
-                
+% try 
+%     obj.vectorPosition(1)
+%                   obj.vectorPosition(2) 
+% catch
+% end
                 obj.sender.send(Tools.compose([sprintf(...
                 'position,Main Camera,%.2f,6,%.2f;', obj.vectorPosition(1), obj.vectorPosition(2)), ...
                 'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
@@ -1664,12 +1687,12 @@ classdef LinearMaze < handle
                          %obj.vectorPosition
 %             obj.vertices(obj.choosebranch_h.Value,end)
                     if obj.logOnUpdate
-                        str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                        str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch,obj.yRotation);
                         if ~strcmp(str, obj.update)
                             obj.update = str;
                             obj.log(str);
                         end
-                
+                 
                     end
                      if y_coord > obj.vertices(obj.currentBranch,end) %get to reset node: then reset camera position
 
@@ -1678,20 +1701,20 @@ classdef LinearMaze < handle
                      
                  end
         
-            if obj.logOnUpdate
-                str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
-                if ~strcmp(str, obj.update)
-                    obj.update = str;
-                    obj.log(str);
-                end
-                
-            end
+%             if obj.logOnUpdate
+%                 str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+%                 if ~strcmp(str, obj.update)
+%                     obj.update = str;
+%                     obj.log(str);
+%                 end
+%                 
+%             end
              %linear = toc%av = 0.001
 %             disp([linear,obj.enabled])%monitors,{192.168.0.11;0},hardware,0
+           
         end
         
-        
-        
+    
         
     end
     %% Walls and export log file
