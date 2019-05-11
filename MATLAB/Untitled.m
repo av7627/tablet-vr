@@ -3,10 +3,11 @@
 
 %make a folder with figures that show the path taken by the
 %user for each trial
+clc
 
 data = xlsread('C:\Users\anilv\Documents\VR_TimeBased\test_gain9_session1_VR_TimeBased_2019-05-10_1616.csv');
 XYdata = [data(:,3),data(:,8:12)];
-RotationData = [data(:,1),data(:,15)]
+RotationData = [data(:,3),data(:,1),data(:,15)];
 
 rows = 1;
 while true %take out any rows containing NaNs
@@ -14,6 +15,17 @@ while true %take out any rows containing NaNs
         break
     elseif sum(isnan(XYdata(rows,:))) ~= 0%contains nan
         XYdata(rows,:) = [];
+    else
+        rows= rows+1;
+    end
+end
+
+rows = 1;
+while true %take out any rows containing NaNs
+    if rows == length(RotationData)+1
+        break
+    elseif sum(isnan(RotationData(rows,:))) ~= 0%contains nan
+        RotationData(rows,:) = [];
     else
         rows= rows+1;
     end
@@ -33,6 +45,7 @@ realXYList = [XYdata(:,1), realXYList];%append trial numbers to array
 numTrials = realXYList(end,1); %get max number of trials from file
 for trials = 1:numTrials
     newMatrix{trials} = realXYList(realXYList(:,1) == trials,:);
+    splitRotationData{trials} = RotationData(RotationData(:,1) ==trials,:);
 end%separate based on trial
 
 folder = fullfile(getenv('USERPROFILE'), 'Documents');
@@ -45,15 +58,22 @@ mkdir(filename_plots)%make new folder for this session
 
 for trials = 1:numTrials
     list = newMatrix{trials};
+    
     y = list(:,3);
     x = list(:,2);
     
     
-    plot(list(1:length(x(y<-33)),2),y(y<-33),'b.')%plot xy data as points before decision point
-    
-    hold on
-    plot(list(length(x(y<-33))+1:end,2),y(y>-33),'r.')%plot xy data as points
-    
+%     scatter(list(1:length(x(y<-33)),2),y(y<-33),'b.')%plot xy data as points before decision point
+%     
+%     hold on
+%     scatter(list(length(x(y<-33))+1:end,2),y(y>-33),'r.')%plot xy data as points
+     cmap = copper(length(x));
+    %figure('Name','xyData')
+    for i = 1:length(x)
+        plot(x(i),y(i),'.','color', cmap(i,:))
+        hold on
+    end
+        
     %make outline of the 3rd branch
     plot([457,457],[-158,-28],'k')%left line
     plot([477,477],[-158,-28],'k')%right line
@@ -64,14 +84,9 @@ for trials = 1:numTrials
     
     %show where where the stimulus is on graph
     %plot(
+
     
-    
-    
-    
-    
-    
-    hold off
-    title(sprintf('trial %i',trials))
+    title(sprintf('trial %i, xyData',trials))
     xlim([430 504])
     ylim([-100 5])
     
@@ -81,9 +96,24 @@ for trials = 1:numTrials
     xticks([431 467 503])
     xticklabels([-36 0 36])
     
+  hold off
     session = sprintf(['trial_%i'],trials);
     file = fullfile(filename_plots, sprintf('%s.png', session));
     saveas(gcf,file)
+    
+   
+    
 end
 
+rotList = splitRotationData{1}
 
+    figure(2)
+ for i =1:length(rotList)
+     plot(rotList(i,2),rotList(i,3),'.','color', cmap(i,:))
+     hold on
+ end
+  title(sprintf('trial %i, rotational data',trials))
+    xlabel('time (sec)')
+    ylabel('rotation (deg)')
+     yticks([20:20:120])
+    yticklabels([120:-20:20])
