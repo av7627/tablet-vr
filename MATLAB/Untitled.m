@@ -5,7 +5,7 @@
 %user for each trial
 clc
 
-data = xlsread('C:\Users\anilv\Documents\VR_TimeBased\test_gain9_session1_VR_TimeBased_2019-05-10_1531.csv');
+data = xlsread('C:\Users\anilv\Documents\VR_TimeBased\test_gain9_session1_VR_TimeBased_2019-05-10_1616.csv');
 XYdata = [data(:,3),data(:,8:12)];
 RotationData = [data(:,3),data(:,1),data(:,15)];
 
@@ -49,8 +49,8 @@ for trials = 1:numTrials
 end%separate based on trial
 
 folder = fullfile(getenv('USERPROFILE'), 'Documents');
-session = sprintf('trialFigures');
-% session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
+session = sprintf('trialRotationFigures');
+session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
 filename_plots = fullfile(folder, sprintf('%s', session));
 mkdir(filename_plots)%make new folder for this session
 
@@ -105,15 +105,15 @@ for trials = 1:numTrials
     
 end
 
-rotList = splitRotationData{3}
+rotList = splitRotationData{1}
 
     figure(2)
  for i =1:length(rotList)
-     plot(rotList(i,2),rotList(i,3)-90,'.','color', cmap(i,:))
+     plot(rotList(i,2),rotList(i,3),'.','color', cmap(i,:))
      hold on
  end
   title(sprintf('trial %i, rotational data',trials))
     xlabel('time (sec)')
     ylabel('rotation (deg)')
-%      yticks([20:20:120])
-%     yticklabels([120:-20:20])
+     yticks([20:20:120])
+    yticklabels([120:-20:20])
