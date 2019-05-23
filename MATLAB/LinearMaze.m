@@ -66,7 +66,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.0533%15;
+        rewardDuration =0.0833%15;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -589,6 +589,15 @@ classdef LinearMaze < handle
                     obj.stage3_newTrial()
                 end
             end
+            
+             if obj.logOnUpdate
+                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                     if ~strcmp(str, obj.update)
+                         obj.update = str;
+                         obj.log(str);
+                     end
+                     
+             end
       
         end
    
@@ -1064,7 +1073,7 @@ classdef LinearMaze < handle
             
           
             
-            rotList = splitRotationData{1}
+            rotList = splitRotationData{1};
             
             figure(2)
             for i =1:length(rotList)
@@ -1681,10 +1690,10 @@ classdef LinearMaze < handle
                %disp('o')
                 obj.yRotation = obj.yRotation + step * obj.gain; %the yRotation is updated each time this function is called
                 
-                if obj.yRotation > 180
-                    obj.yRotation = 180;
-                elseif obj.yRotation < 0
-                    obj.yRotation = 0;
+                if obj.yRotation > 140
+                    obj.yRotation = 140;
+                elseif obj.yRotation < 40
+                    obj.yRotation = 40;
                 end
                 
                 obj.x_yRotation = cosd(obj.yRotation);
