@@ -2,7 +2,7 @@
  %delete all 'test' log files in TrialBased log folder
 recycle on; %send files to recycle bin
 
-Foldername = 'C:\Users\Gandhi Lab.DESKTOP-IQP0LND\Documents\VR_TrialBased';
+Foldername = 'C:\Users\anilv\Downloads\VR_TrialBased (1)\VR_TrialBased';
 
 listing = dir(Foldername);
 
@@ -20,25 +20,26 @@ list = listing(inx);
   end
   
   if strcmp('test', MouseName ) %test file
-    delete(fn)
+   delete(fn)
 %   rmdir(fn)
+        fn
   end
   
  end
  
  for i = 1:numel(listing) %this loop deletes .mat files
-  fn =  strcat(Foldername,'\',listing(i).name)
+  fn =  strcat(Foldername,'\',listing(i).name);
   
     try
-      filetype = listing(i).name(end-3:end) %.mat or .csv
+      filetype = listing(i).name(end-3:end); %.mat or .csv
     catch
-      filetype = 'xxxx'
+      filetype = 'xxxx';
     end
       
   
   if strcmp('.mat', filetype) %.mat files
     delete(fn)
-    
+    fn
   end
   
  end
