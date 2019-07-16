@@ -66,7 +66,9 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.0833%15;
+        rewardDuration =0.13%15;
+        
+        airpuffDuration = 0.1;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -77,7 +79,7 @@ classdef LinearMaze < handle
 
         startTone = [500, .3];
         
-
+         pauseInput = [500, .7];
         % tapeTrigger - Whether to initiate a new trial when photosensor
         % detects a tape strip in the belt.
         tapeTrigger = false;
@@ -174,7 +176,7 @@ classdef LinearMaze < handle
         %log file trial based
         fid_trial
         
-        mGain =9;
+        mGain =7; %1 - 90deg for stage 2
         
         mSpeed = 0;
         
@@ -242,7 +244,7 @@ classdef LinearMaze < handle
         tapeControl = [0 1]
         
         
-        
+        rewardInterval = 30 %for stage1. this is the interval for rewards to be dispensed
         % trial - Trial number.
         trial = 1
         
@@ -264,13 +266,19 @@ classdef LinearMaze < handle
         
         mouseName
         
+        
+        
         stage
+        
+        stage2GainInterval = 10;
         
         stage3Record =0;%first number is number of trials, second number is number of errors 
         
+        Stage3RecordList
+        
         dateCreated
         
-        stage3Array = [1,1, 65-20,115+20];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
+        stage3Array = [1,1, 65,115];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
@@ -350,12 +358,17 @@ classdef LinearMaze < handle
             %get mouse name for log files
             obj.mouseName = [obj.newGUI_figurehandle.EnterMouseNameEditField.Value,'_gain',num2str(obj.mGain), '_session',num2str(obj.newGUI_figurehandle.SessionNumberDropDown.Value)];
             
-            
+            k = find(strcmpi(keys, 'stage'), 1);
+            try
+                obj.stage = values{k};
+            catch
+                obj.stage = nan;
+            end
  
             % Create a log file. Time based
             obj.dateCreated = datestr(now, 'yyyymmddHHMM');
             folder = fullfile(getenv('USERPROFILE'), 'Documents', 'VR_TimeBased');
-            session = sprintf([obj.mouseName,'_VR_TimeBased_%s'], obj.dateCreated);
+            session = sprintf([obj.mouseName,'_VR_TimeBased_%s_%s'], obj.stage, obj.dateCreated);
             session = [session(1:end-8),'-',session(end-7:end-6),'-',session(end-5:end-4),'_',session(end-3:end)];
             obj.filename = fullfile(folder, sprintf('%s.csv', session));
             obj.fid = Files.open(obj.filename, 'a');
@@ -477,11 +490,11 @@ classdef LinearMaze < handle
             
             switch obj.stage
                 case 'stage1'
-                    obj.sender.send('enable,Blank,0;', obj.addresses);
-                    obj.scheduler.repeat(@obj.stage1,30);
+                    obj.sender.send('enable,Blank,1;', obj.addresses);
+                    obj.scheduler.repeat(@obj.stage1,1 / obj.fps);
                     
                 case 'stage2'
-                    
+                    obj.sender.send('enable,Blank,1;', obj.addresses);
                 case 'stage3'
                     obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,0;', obj.addresses);
                     
@@ -503,7 +516,7 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
                     obj.sender.send('enable,Branch2LeftGray,0;', obj.addresses);
                     obj.sender.send('enable,Branch2RightGray,0;', obj.addresses);
-                    obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
                     %turn of stage3 Stim
                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
@@ -522,16 +535,33 @@ classdef LinearMaze < handle
             %give water every 30 sec
             obj.sender.send('enable,Blank,1;', obj.addresses);
             if obj.enabled
+                if toc(obj.startTime)>obj.rewardInterval
+                obj.rewardInterval = obj.rewardInterval + 30;%add thirty seconds for next reward    
                 obj.treadmill.reward(obj.rewardDuration);
                 'reward'
                 obj.log('note,reward');
+                end
+                if obj.logOnUpdate
+                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch,obj.rewardInterval);
+                     if ~strcmp(str, obj.update)
+                         obj.update = str;
+                         obj.log(str);
+                     end
+                     
+                 end
             end
         end
         
         function stage2(obj, step)
             %blank screen
+            
             %turn wheel some degrees to recieve water
              if obj.enabled
+                 if obj.trial >  obj.stage2GainInterval & obj.gain > 1.5
+                     obj.gain = obj.gain-.5
+                      obj.stage2GainInterval =obj.stage2GainInterval +10;
+                 end
+        
                  obj.yRotation = obj.yRotation + step * obj.gain;
                  
                  if obj.yRotation < 70 || obj.yRotation > 110
@@ -546,7 +576,7 @@ classdef LinearMaze < handle
                  end
                  
                  if obj.logOnUpdate
-                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch,obj.gain,obj.rewardInterval);
                      if ~strcmp(str, obj.update)
                          obj.update = str;
                          obj.log(str);
@@ -562,12 +592,16 @@ classdef LinearMaze < handle
             %decision point. if it exceeds error angle, play error tone. if
             %it exceeds correct side, give water, reset trial.
             if obj.enabled
+               
+                
+                
+                
                 obj.yRotation = obj.yRotation + step * obj.gain;
                 
-                if obj.yRotation > 115+20
-                    obj.yRotation = 115+20;
-                elseif obj.yRotation < 65-20
-                    obj.yRotation = 65-20;
+                if obj.yRotation > 115
+                    obj.yRotation = 115;
+                elseif obj.yRotation < 65
+                    obj.yRotation = 65;
                 end
                 
                 obj.sender.send(Tools.compose([sprintf(...
@@ -579,19 +613,23 @@ classdef LinearMaze < handle
                     %play error tone
                    
                     Tools.tone(obj.errorTone(1), obj.errorTone(2));
-                    
+                    obj.treadmill.airpuff(obj.airpuffDuration);
                     obj.stage3Record = obj.stage3Record + 1; %keep record of errors for log file
+                    obj.Stage3RecordList(obj.trial) = 0;%error
+                    %disp(obj.Stage3RecordList)
                     
                     obj.stage3Array(1) = 0;
                     %obj.blank(obj.intertrialDuration);
                     stage3_newTrial(obj)
                 elseif obj.yRotation == obj.stage3Array(4) %correct side chosen
+                    obj.Stage3RecordList(obj.trial) = 1;
                     obj.stage3_newTrial()
+                    
                 end
             end
             
              if obj.logOnUpdate
-                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch);
+                     str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch,obj.gain);
                      if ~strcmp(str, obj.update)
                          obj.update = str;
                          obj.log(str);
@@ -599,13 +637,16 @@ classdef LinearMaze < handle
                      
              end
       
+             
         end
    
-        
+       
         function stage3_newTrial(obj)
+         
+                 
             if obj.stage3Array(1) ~= 0 %trial was correct
                 Tools.tone(300,1); %reward tone
-                pause(3); %pause for 3 seconds looking at blinking stim
+                %pause(3); %pause for 3 seconds looking at blinking stim
                 
                  obj.treadmill.reward(obj.rewardDuration);
                  'reward'
@@ -621,6 +662,21 @@ classdef LinearMaze < handle
            
             obj.log_trial('trial: %i. errors so far: %i. error/trial = %f', obj.trial, obj.stage3Record,obj.stage3Record/obj.trial);
             
+            try
+               obj.Stage3RecordList(end-10:end)
+                last10TrialsRatio = sum(obj.Stage3RecordList(end-10:end))/10; %ratio from 0 to 1 that show how accurate over last 10 trials
+            catch
+                last10TrialsRatio = 1;
+            end
+            
+                if obj.trial >  obj.stage2GainInterval & obj.gain > 1.5 & last10TrialsRatio <= 0.5
+                     obj.gain = obj.gain-.5
+                     obj.stage2GainInterval =obj.stage2GainInterval +10;
+                elseif obj.trial >  obj.stage2GainInterval & obj.gain > 1.5 & last10TrialsRatio > 0.5
+%                     obj.gain = obj.gain+.5
+%                     obj.stage2GainInterval =obj.stage2GainInterval +10;
+                end
+             
             %blank screen
 %             if obj.intertrialBehavior
 %                 obj.blank(obj.intertrialDuration);
@@ -653,6 +709,8 @@ classdef LinearMaze < handle
                         'position,Main Camera,%.2f,6,%.2f;', 467, -30), ...
                         'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                         obj.addresses);
+                    
+            
         end
         
         function stage3_setStim(obj)
@@ -666,20 +724,20 @@ classdef LinearMaze < handle
              rnd = rand();
              if rnd>.5 %left
                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-                 obj.sender.send('enable,Branch3RightGray,1;', obj.addresses);
+                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
                  
                  obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
                  obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
                     
-                 obj.stage3Array(3:4) = [115+20,65-20];
+                 obj.stage3Array(3:4) = [115,65];
              else %right
-                 obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
+                 obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
                 
                 obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
                 obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
-                obj.stage3Array(3:4) = [65-20,115+20];
+                obj.stage3Array(3:4) = [65,115];
              end
          else %incorrect
              %same side
@@ -807,16 +865,21 @@ classdef LinearMaze < handle
         function start(obj)
             % LinearMaze.start()
             % Send high pulse to trigger-out and enable behavior.
-           
-                    obj.stopDuringBlank = false;
-                    % Load an existing scene.
-                    obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
+            
+            % Load an existing scene.
+            obj.sender.send(sprintf('scene,%s;', obj.scene), obj.addresses);
+                    
+           if ~strcmp(obj.stage, 'stage1') & ~strcmp(obj.stage,'stage2')
+                    
+                    
                     
                     % Hide user menu.
                     obj.sender.send('enable,Menu,0;', obj.addresses);
                     
                     % Hide blank and enable external devices and behavior.
                     obj.sender.send('enable,Blank,0;', obj.addresses);
+           end
+                    obj.stopDuringBlank = false;
                     
                     % Send a high pulse to trigger-out.
                     obj.treadmill.trigger = true;
@@ -1315,17 +1378,47 @@ classdef LinearMaze < handle
             %Objects.delete(obj.blankId); %this gave me a problem on the
             %basement pc
             if duration == 0 && ~obj.stopDuringBlank
+                if ~strcmp(obj.stage,'stage1') &~strcmp(obj.stage,'stage2')
                 obj.sender.send('enable,Blank,0;', obj.addresses);
+                end
                 obj.enabled = true;
                 
                 %starting tone
-                Tools.tone(obj.startTone(1), obj.startTone(2));
                 
+                if strcmp(obj.stage,'stage3')
+                    obj.pauseInputs(2);
+                    
+                else
+                    Tools.tone(obj.startTone(1), obj.startTone(2));
+                end
             elseif duration > 0
                 obj.enabled = false;
                 obj.sender.send('enable,Blank,1;', obj.addresses);
                 %obj.blankId = %this also gave me a problem on pc
                 obj.scheduler.delay({@obj.blank, 0}, duration);
+            end
+        end
+        
+        function pauseInputs(obj, duration)
+            % LinearMaze.pause(duration)
+            % Show blank for a given duration.
+            
+           
+            %Objects.delete(obj.blankId); %this gave me a problem on the
+            %basement pc
+            if duration == 0
+               
+                obj.enabled = true;
+                Tools.tone(obj.startTone(1), obj.startTone(2));
+                %starting tone
+                %Tools.tone(obj.startTone(1), obj.startTone(2));
+                
+            elseif duration > 0
+                obj.enabled = false;
+                Tools.tone(700, obj.startTone(2));
+                %obj.sender.send('enable,Blank,1;', obj.addresses);
+                %obj.blankId = %this also gave me a problem on pc
+                obj.scheduler.delay({@obj.pauseInputs, 0}, duration);
             end
         end
         
@@ -1477,7 +1570,7 @@ classdef LinearMaze < handle
                     
                     %Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
                    
-                    
+                    obj.treadmill.airpuff(obj.airpuffDuration);
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;
@@ -1515,7 +1608,7 @@ classdef LinearMaze < handle
                     %incorrect
                     %Tools.tone(obj.errorTone(1), obj.errorTone(2)); %This makes a error tone
                    
-                    
+                    obj.treadmill.airpuff(obj.airpuffDuration);
                     %obj.newGUI_figurehandle.ChoiceEditField.Value = 'incorrect';
                     obj.intertrialDuration = 3;
                     correctness = 0;

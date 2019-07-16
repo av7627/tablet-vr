@@ -61,6 +61,8 @@ classdef ArduinoTreadmill < Event
         %touchPadPin
         touchPadPin = 7
         
+        %airpuff
+        airpuffPin = 10
         
         % triggerPin - Trigger-out pin to initiate external devices.
         triggerPin = 22
@@ -101,6 +103,13 @@ classdef ArduinoTreadmill < Event
             % Send a pulse for the given duration to the rewarding device (e.g. pinch-valve).
             
             obj.bridge.setPulse(obj.rewardPin, 1, 0, round(duration * 1e6), 1); %pin, stateStart, durationLow, durationHigh, repetitions
+        end
+        
+        function airpuff(obj, duration)
+            % Treadmill.airpuff(duration)
+            % Send a pulse for the given duration to the airpuff device (e.g. pinch-valve).
+            
+            obj.bridge.setPulse(obj.airpuffPin, 1, 0, round(duration * 1e6), 1); %pin, stateStart, durationLow, durationHigh, repetitions
         end
         
         function triggerState = get.trigger(obj)

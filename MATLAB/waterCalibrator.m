@@ -19,13 +19,13 @@ end
 
 obj.treadmill = ArduinoTreadmill(obj.com);
 
-obj.treadmill.reward(1);%1sec
+obj.treadmill.reward(2);%1sec
 
 RewardRate = input('water amount (grams): '); %ml/sec. Because valve open for 1 sec
-
+trials = input('expected number of trials: ');
 time = 0.8 / RewardRate;
 
-timePerTrial = time/50
+timePerTrial = time/trials
 
 delete(obj.treadmill);
 
