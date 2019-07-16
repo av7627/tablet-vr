@@ -922,6 +922,15 @@ classdef LinearMaze < handle
           
         end
         
+        function ManualAirpuff(obj)
+           %send pulse to airpuff
+           
+           obj.treadmill.airpuff(obj.airpuffDuration);
+           obj.log('note,Manual airpuff');
+          
+        end
+        
+        
         function delete(obj)
             % LinearMaze.delete()
             % Release all resources.
