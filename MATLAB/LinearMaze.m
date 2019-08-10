@@ -66,9 +66,9 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.13%15;
+        rewardDuration =0.1%15;
         
-        airpuffDuration = 0.1;
+        airpuffDuration = 0.05;
         
         % rewardTone - Frequency and duration of the tone during a reward.
 
@@ -522,6 +522,9 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
+                    %move all stimuli to desired angle from midline
+                    moveStimAngle(obj, angle)
+                    
                 otherwise
                     obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,1;', obj.addresses);
                     obj.scheduler.repeat(@obj.onUpdate, 1 / obj.fps);
@@ -530,6 +533,13 @@ classdef LinearMaze < handle
             
 
         end
+        
+        function moveStimAngle(obj, angle)
+            
+            
+        end
+        
+        
         function stage1(obj)
             %turn on blank screen
             %give water every 30 sec
@@ -612,15 +622,14 @@ classdef LinearMaze < handle
                 if obj.yRotation == obj.stage3Array(3) && obj.stage3Array(1)%error side
                     %play error tone
                    
-                    Tools.tone(obj.errorTone(1), obj.errorTone(2));
-                    obj.treadmill.airpuff(obj.airpuffDuration);
+                    
                     obj.stage3Record = obj.stage3Record + 1; %keep record of errors for log file
                     obj.Stage3RecordList(obj.trial) = 0;%error
                     %disp(obj.Stage3RecordList)
                     
                     obj.stage3Array(1) = 0;
                     %obj.blank(obj.intertrialDuration);
-                    stage3_newTrial(obj)
+                    obj.stage3_newTrial()
                 elseif obj.yRotation == obj.stage3Array(4) %correct side chosen
                     obj.Stage3RecordList(obj.trial) = 1;
                     obj.stage3_newTrial()
@@ -652,14 +661,19 @@ classdef LinearMaze < handle
                  'reward'
                  obj.log('note,reward');
                  obj.blank(obj.intertrialDuration);
+                 obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 1; %correct side chosen
             else
+                Tools.tone(obj.errorTone(1), obj.errorTone(2));
+                pause(2)
                 obj.blank(obj.intertrialDuration+2);
-                
+                pause(1)
+                obj.treadmill.airpuff(obj.airpuffDuration);
+                obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 0; %incorrect side chosen
             end
             obj.trial = obj.trial + 1;
             obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
             
-           
+            obj.MouseGraph(); %update the mouseGraph in GUI
             obj.log_trial('trial: %i. errors so far: %i. error/trial = %f', obj.trial, obj.stage3Record,obj.stage3Record/obj.trial);
             
             try
@@ -728,7 +742,9 @@ classdef LinearMaze < handle
                  
                  obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
                  obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
-                    
+                 
+                 
+                 
                  obj.stage3Array(3:4) = [115,65];
              else %right
                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
@@ -737,6 +753,8 @@ classdef LinearMaze < handle
                 obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
                 obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
+               
+                
                 obj.stage3Array(3:4) = [65,115];
              end
          else %incorrect
@@ -950,19 +968,72 @@ classdef LinearMaze < handle
             obj.stageThreeGraphs();
         end
         
+        
         function stageThreeGraphs(obj)
-           %Number of trials vs day
+           name = obj.newGUI_figurehandle.EnterMouseNameEditField.Value
+           trial_ = obj.trial
+           time_ = toc(obj.startTime)
+           accuracy_ = 1-obj.stage3Record/(obj.trial-1)
            
+           %save this session to table. save timeDuration, trialNumbers, accuracy
+           if strcmp(name, 'test')
+               
+               load test
+               time = [time time_];
+               accuracy = [accuracy accuracy_];
+               trial = [trial trial_];
+               
+               save test accuracy time trial
+               
+           end
             
+           if strcmp(name, 'zd53')
+               
+               load zd53
+               time = [time time_];
+               accuracy = [accuracy accuracy_];
+               trial = [trial trial_];
+               
+               save zd53 accuracy time trial
+           end
+            
+           if strcmp(name, 'db_cx3cr1_4c')
+               
+               load db_cx3cr1_4c
+               time = [time time_];
+               accuracy = [accuracy accuracy_];
+               trial = [trial trial_];
+               
+               save db_cx3cr1_4c accuracy time trial
+            end
+           %graph trials over days
+          obj.TrialsOverDays(trial,name)
+           %graph accuracy over days
+           figure(2)
+           obj.AccuracyOverDays(accuracy,name)
             
             
         end
         
+        function TrialsOverDays(obj,trials,name)
+            plot(1:length(trials),trials)
+            title(sprintf('Trials Over Days, %s',name))
+            xlabel('days')
+            ylabel('Number of Trials')
+        end
+        
+        function AccuracyOverDays(obj,accuracy,name)
+            plot(1:length(accuracy),accuracy)
+            title(sprintf('Accuracy Over Days, %s',name))
+            xlabel('days')
+            ylabel('Accuracy (%)')
+        end
         
         function trialGraph(obj)
             %make a folder with figures that show the path taken by the
             %user for each trial
-            
+            if isnan(obj.stage) % only make graphs for stages after stage 3
+                
             data = xlsread(obj.filename);
             %             XYdata = [data(:,3),data(:,8:12)];
             %
@@ -1156,7 +1227,7 @@ classdef LinearMaze < handle
             xlabel('time (sec)')
             ylabel('rotation (deg)')
             yticks([20:20:120])
-            
+            end
         end
         
         function MouseGraph(obj)
@@ -1167,7 +1238,7 @@ classdef LinearMaze < handle
             handle_choiceAccuracy = obj.newGUI_figurehandle.ChoiceAccuracyGraph;%handle to ChoiceAccuracyGraph on GUI
             
             lastTrial = obj.trial - 1 + obj.trialNumberFactor*height(obj.csvDataTable); %this is because we care about plotting the previous trial
-            disp(lastTrial)
+            %disp(lastTrial)
             if lastTrial < 10 %first ten trials
                 ylim(handle_mouseChoice,[0 ,lastTrial]); %increase limit of mouseChoiceGraph trial # by 1
                 set(handle_mouseChoice,'ytick',[1:lastTrial]);%add trial number to graph
@@ -1192,7 +1263,7 @@ classdef LinearMaze < handle
             plot(handle_choiceAccuracy,1:lastTrial, obj.accuracyArray,'-m','LineWidth',2);%plot the accuracy over last ten trials
             %--------------------
             
-            
+            if isnan(obj.stage)
             %calculate the ratio for averageGratingSide
             obj.averageGratingSide(lastTrial) = sum(obj.gratingSideArray(1:lastTrial))/lastTrial;% * 2 + 2; %find average side of grating, convert 0-1 ratio to 2-4 ratio. append to list
             changeratio = obj.averageGratingSide .*2 +2;%stretch by factor of 2, push to the right 2. So it fits in the plot 
@@ -1207,7 +1278,7 @@ classdef LinearMaze < handle
             
             plot(handle_mouseChoice,obj.averageCorrectChoice,1:lastTrial,'k','LineWidth',2);  %plot list of average correct choice at each trial 
             plot(handle_mouseChoice,changeratio,1:lastTrial,'b','LineWidth',2);  %plot average side line
-                                    
+            end          
                 
         end
         
@@ -1268,7 +1339,7 @@ classdef LinearMaze < handle
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGrating', obj.stimSize_string ,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGray,1;'), obj.addresses);
                 obj.ActualSide = 2;%left.%this is to see if the side chosen was correct or not for the reward
-                obj.gratingSideArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable)) = 0;
+                obj.gratingSideArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable)) = 0; %left
             else%if side == 3%right
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'RightGrating',obj.stimSize_string,',1;'), obj.addresses);
                 obj.sender.send(strcat('enable,Branch', num2str(obj.currentBranch) ,'LeftGray,1;'), obj.addresses);
@@ -1841,9 +1912,10 @@ classdef LinearMaze < handle
             % Create an entry in the log file if logOnUpdate == true.
              %tic
                 
-                if obj.hardware == 0 && obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
+                if obj.hardware == 0 & obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
+                    
                 elseif obj.enabled  %hardware on, obj enabled
                      
                     
