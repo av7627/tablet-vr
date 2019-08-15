@@ -522,8 +522,11 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
+                     
+                    
                     %move all stimuli to desired angle from midline
-                    moveStimAngle(obj, angle)
+                    Midangle = 90
+                    obj.moveStimAngle(Midangle)
                     
                 otherwise
                     obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,1;', obj.addresses);
@@ -535,8 +538,23 @@ classdef LinearMaze < handle
         end
         
         function moveStimAngle(obj, angle)
+            r = 40
+            x = r*sind(angle) +467
+            y = r*cosd(angle) -30
+         
             
+            obj.sender.send(Tools.compose([sprintf(...
+                        'position,Branch3Right_stage3,%.2f,6,%.2f;', x,y), ...
+                        'rotation,Branch3Right_stage3,90,%.2f,0;'], angle + obj.offsets), ...
+                        obj.addresses);
+        
+            x = -r*sind(angle) +467
             
+            obj.sender.send(Tools.compose([sprintf(...
+                        'position,Branch3Left_stage3,%.2f,6,%.2f;', x,y), ...
+                        'rotation,Branch3Left_stage3,90,%.2f,0;'], angle + obj.offsets), ...
+                        obj.addresses);
+                        
         end
         
         
@@ -938,6 +956,7 @@ classdef LinearMaze < handle
            obj.treadmill.reward(obj.rewardDuration);
            obj.log('note,Manual reward');
           
+          
         end
         
         function ManualAirpuff(obj)
@@ -945,7 +964,7 @@ classdef LinearMaze < handle
            
            obj.treadmill.airpuff(obj.airpuffDuration);
            obj.log('note,Manual airpuff');
-          
+          obj.moveStimAngle(40)
         end
         
         

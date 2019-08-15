@@ -278,7 +278,7 @@ classdef LinearMaze < handle
         
         dateCreated
         
-        stage3Array = [1,1, 65,115];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
+        stage3Array = [1,1, 45,135];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
@@ -522,8 +522,11 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
                     
+                     
+                    
                     %move all stimuli to desired angle from midline
-                    moveStimAngle(obj, angle)
+                    Midangle = 90
+                    obj.moveStimAngle(Midangle)
                     
                 otherwise
                     obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,1;', obj.addresses);
@@ -535,8 +538,24 @@ classdef LinearMaze < handle
         end
         
         function moveStimAngle(obj, angle)
+           
+            r = 40;
+            x = r*sind(angle) +467;
+            y = r*cosd(angle) -30;
+         
             
+            obj.sender.send(Tools.compose([sprintf(...
+                        'position,Branch3Right_stage3,%.2f,6,%.2f;', x,y), ...
+                        'rotation,Branch3Right_stage3,90,%.2f,0;'], angle ), ...
+                        obj.addresses);
+        
+            x = -r*sind(angle) +467;
             
+            obj.sender.send(Tools.compose([sprintf(...
+                        'position,Branch3Left_stage3,%.2f,6,%.2f;', x,y), ...
+                        'rotation,Branch3Left_stage3,90,%.2f,0;'], -angle ), ...
+                        obj.addresses);
+                        
         end
         
         
@@ -608,10 +627,10 @@ classdef LinearMaze < handle
                 
                 obj.yRotation = obj.yRotation + step * obj.gain;
                 
-                if obj.yRotation > 115
-                    obj.yRotation = 115;
-                elseif obj.yRotation < 65
-                    obj.yRotation = 65;
+                if obj.yRotation > 135
+                    obj.yRotation = 135;
+                elseif obj.yRotation < 45
+                    obj.yRotation = 45;
                 end
                 
                 obj.sender.send(Tools.compose([sprintf(...
@@ -745,7 +764,7 @@ classdef LinearMaze < handle
                  
                  
                  
-                 obj.stage3Array(3:4) = [115,65];
+                 obj.stage3Array(3:4) = [135,45];
              else %right
                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
@@ -755,7 +774,7 @@ classdef LinearMaze < handle
                     
                
                 
-                obj.stage3Array(3:4) = [65,115];
+                obj.stage3Array(3:4) = [45,135];
              end
          else %incorrect
              %same side
@@ -938,6 +957,7 @@ classdef LinearMaze < handle
            obj.treadmill.reward(obj.rewardDuration);
            obj.log('note,Manual reward');
           
+          
         end
         
         function ManualAirpuff(obj)
@@ -945,7 +965,7 @@ classdef LinearMaze < handle
            
            obj.treadmill.airpuff(obj.airpuffDuration);
            obj.log('note,Manual airpuff');
-          
+          obj.moveStimAngle(40)
         end
         
         
@@ -1495,7 +1515,7 @@ classdef LinearMaze < handle
                 
             elseif duration > 0
                 obj.enabled = false;
-                Tools.tone(700, obj.startTone(2));
+                %Tools.tone(700, obj.startTone(2)); 
                 %obj.sender.send('enable,Blank,1;', obj.addresses);
                 %obj.blankId = %this also gave me a problem on pc
                 obj.scheduler.delay({@obj.pauseInputs, 0}, duration);
