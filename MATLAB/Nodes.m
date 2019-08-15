@@ -301,6 +301,7 @@ classdef Nodes < Event
                     % Yaw finished changing.
                     obj.yaw = obj.rotation;
                     obj.rotating = false;
+                  
                     obj.invoke('Rotating', false);
                 else
                     % Update yaw.
@@ -310,6 +311,7 @@ classdef Nodes < Event
             end
             if obj.changed
                 obj.changed = false;
+                
                 obj.invoke('Change', obj.position, obj.distance, obj.yaw, obj.rotation);
             end
             obj.invoke('Update');

@@ -178,7 +178,7 @@ classdef LinearMaze < handle
         
         mGain =7; %1 - 90deg for stage 2
         
-        mSpeed = 0;
+        mSpeed = 5;
         
         lickCount = 0;  
         
@@ -278,7 +278,7 @@ classdef LinearMaze < handle
         
         dateCreated
         
-        stage3Array = [1,1, 65,115];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
+        stage3Array = [1,1, 45,135];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
@@ -538,21 +538,22 @@ classdef LinearMaze < handle
         end
         
         function moveStimAngle(obj, angle)
-            r = 40
-            x = r*sind(angle) +467
-            y = r*cosd(angle) -30
+           
+            r = 40;
+            x = r*sind(angle) +467;
+            y = r*cosd(angle) -30;
          
             
             obj.sender.send(Tools.compose([sprintf(...
                         'position,Branch3Right_stage3,%.2f,6,%.2f;', x,y), ...
-                        'rotation,Branch3Right_stage3,90,%.2f,0;'], angle + obj.offsets), ...
+                        'rotation,Branch3Right_stage3,90,%.2f,0;'], angle ), ...
                         obj.addresses);
         
-            x = -r*sind(angle) +467
+            x = -r*sind(angle) +467;
             
             obj.sender.send(Tools.compose([sprintf(...
                         'position,Branch3Left_stage3,%.2f,6,%.2f;', x,y), ...
-                        'rotation,Branch3Left_stage3,90,%.2f,0;'], angle + obj.offsets), ...
+                        'rotation,Branch3Left_stage3,90,%.2f,0;'], -angle ), ...
                         obj.addresses);
                         
         end
@@ -626,10 +627,10 @@ classdef LinearMaze < handle
                 
                 obj.yRotation = obj.yRotation + step * obj.gain;
                 
-                if obj.yRotation > 115
-                    obj.yRotation = 115;
-                elseif obj.yRotation < 65
-                    obj.yRotation = 65;
+                if obj.yRotation > 135
+                    obj.yRotation = 135;
+                elseif obj.yRotation < 45
+                    obj.yRotation = 45;
                 end
                 
                 obj.sender.send(Tools.compose([sprintf(...
@@ -763,7 +764,7 @@ classdef LinearMaze < handle
                  
                  
                  
-                 obj.stage3Array(3:4) = [115,65];
+                 obj.stage3Array(3:4) = [135,45];
              else %right
                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
@@ -773,7 +774,7 @@ classdef LinearMaze < handle
                     
                
                 
-                obj.stage3Array(3:4) = [65,115];
+                obj.stage3Array(3:4) = [45,135];
              end
          else %incorrect
              %same side
@@ -884,6 +885,7 @@ classdef LinearMaze < handle
             
             if obj.hardware == 0
                 obj.nodes.vertices = obj.vertices(branchNum,:);
+                disp(obj.nodes.vertices)
             elseif obj.hardware == 2
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.z_yRotation = 1;
@@ -1371,7 +1373,7 @@ classdef LinearMaze < handle
         
         function setNodes_movieMode(obj)
             %set path left or right for movie mode camera
-            
+            'ok'
             %this is the value of the preset between 0 and 1
             preset = obj.csvDataTable{obj.trial,6};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
                 
@@ -1514,7 +1516,7 @@ classdef LinearMaze < handle
                 
             elseif duration > 0
                 obj.enabled = false;
-                Tools.tone(700, obj.startTone(2));
+                %Tools.tone(700, obj.startTone(2)); 
                 %obj.sender.send('enable,Blank,1;', obj.addresses);
                 %obj.blankId = %this also gave me a problem on pc
                 obj.scheduler.delay({@obj.pauseInputs, 0}, duration);
@@ -1934,7 +1936,12 @@ classdef LinearMaze < handle
                 if obj.hardware == 0 & obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
-                    
+                    x = obj.nodes.position
+                    rot = obj.nodes.rotation
+                    obj.sender.send(Tools.compose([sprintf(...
+                        'position,Main Camera,%.2f,6,%.2f;', x(1), x(2)), ...
+                        'rotation,Main Camera,0,%.2f,0;'], rot + obj.offsets), ...
+                        obj.addresses);
                 elseif obj.enabled  %hardware on, obj enabled
                      
                     

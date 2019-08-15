@@ -51,6 +51,11 @@ classdef TreadmillInterface < Event
             % Pretend to send a pulse for the given duration to the rewarding device (e.g. pinch-valve).
         end
         
+        function airpuff(~, ~)
+            % TreadmillInterface.airpuff(duration)
+            % Pretend to send a pulse for the given duration to the airpuff device (e.g. pinch-valve).
+        end
+        
         function triggerState = get.trigger(obj)
             triggerState = obj.triggerState;
         end

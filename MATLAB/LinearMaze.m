@@ -178,7 +178,7 @@ classdef LinearMaze < handle
         
         mGain =7; %1 - 90deg for stage 2
         
-        mSpeed = 0;
+        mSpeed = 5;
         
         lickCount = 0;  
         
@@ -287,7 +287,7 @@ classdef LinearMaze < handle
     properties (Constant)
         
         % fps - Frames per seconds for time integration; should match VR game.
-        fps = 30
+        fps = 50
         
         % programVersion - Version of this class.
         programVersion = '20180525';
@@ -885,6 +885,7 @@ classdef LinearMaze < handle
             
             if obj.hardware == 0
                 obj.nodes.vertices = obj.vertices(branchNum,:);
+                disp(obj.nodes.vertices)
             elseif obj.hardware == 2
                 obj.yRotation = 90; %reset rotation on new trial
                 obj.z_yRotation = 1;
@@ -1372,7 +1373,7 @@ classdef LinearMaze < handle
         
         function setNodes_movieMode(obj)
             %set path left or right for movie mode camera
-            
+           
             %this is the value of the preset between 0 and 1
             preset = obj.csvDataTable{obj.trial,6};%find(strcmp(obj.newGUI_figurehandle.MovieModeSideDropDown.Items,obj.newGUI_figurehandle.MovieModeSideDropDown.Value)); %obj.movieDirection_h.Value;   
                 
@@ -1935,7 +1936,13 @@ classdef LinearMaze < handle
                 if obj.hardware == 0 & obj.enabled%obj.speed ~= 0 && obj.enabled && ~obj.nodes.rotating
                     % Open-loop updates position when open-loop speed is different 0.
                     obj.nodes.push(obj.speed / obj.nodes.fps);
-                    
+                    x = obj.nodes.position;
+                    rot = obj.nodes.yaw;
+                   
+                    obj.sender.send(Tools.compose([sprintf(...
+                        'position,Main Camera,%.2f,6,%.2f;', x(1), x(2)), ...
+                        'rotation,Main Camera,0,%.2f,0;'], rot + obj.offsets), ...
+                        obj.addresses);
                 elseif obj.enabled  %hardware on, obj enabled
                      
                     
