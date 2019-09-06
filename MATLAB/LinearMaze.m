@@ -244,7 +244,7 @@ classdef LinearMaze < handle
         tapeControl = [0 1]
         
         
-        rewardInterval = 30 %for stage1. this is the interval for rewards to be dispensed
+        rewardInterval = 20 %for stage1. this is the interval for rewards to be dispensed
         % trial - Trial number.
         trial = 1
         
@@ -278,7 +278,7 @@ classdef LinearMaze < handle
         
         dateCreated
         
-        stage3Array = [1,1, 45,135];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
+        stage3Array = [1,1, 35,155];%[errorYet(0no/1yes) , stim side(0left/1right) , incorrectSide, correctSide ]
         
         hardware = 0;%0:no hardware,  2:steeringOnly--------------------------------------------------------------------------
         
@@ -565,9 +565,9 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Blank,1;', obj.addresses);
             if obj.enabled
                 if toc(obj.startTime)>obj.rewardInterval
-                obj.rewardInterval = obj.rewardInterval + 30;%add thirty seconds for next reward    
+                obj.rewardInterval = obj.rewardInterval + 20;%add twenty seconds for next reward    
                 obj.treadmill.reward(obj.rewardDuration);
-                'reward'
+                'reward_stage1'
                 obj.log('note,reward');
                 end
                 if obj.logOnUpdate
@@ -596,12 +596,14 @@ classdef LinearMaze < handle
                  if obj.yRotation < 70 || obj.yRotation > 110
                      
                      obj.treadmill.reward(obj.rewardDuration);
-                     'reward'
-                     obj.log('note,reward');
+                     'reward_stage2'
+                     obj.log('note,reward_stage2');
                      obj.yRotation = 90;
                      obj.blank(obj.intertrialDuration);
                      obj.trial = obj.trial + 1;
+                     
                      obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
+                   
                  end
                  
                  if obj.logOnUpdate
@@ -627,10 +629,10 @@ classdef LinearMaze < handle
                 
                 obj.yRotation = obj.yRotation + step * obj.gain;
                 
-                if obj.yRotation > 135
-                    obj.yRotation = 135;
-                elseif obj.yRotation < 45
-                    obj.yRotation = 45;
+                if obj.yRotation > 155
+                    obj.yRotation = 155;
+                elseif obj.yRotation < 35
+                    obj.yRotation = 35;
                 end
                 
                 obj.sender.send(Tools.compose([sprintf(...
@@ -682,11 +684,13 @@ classdef LinearMaze < handle
                  obj.blank(obj.intertrialDuration);
                  obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 1; %correct side chosen
             else
-                Tools.tone(obj.errorTone(1), obj.errorTone(2));
-                pause(2)
+                obj.treadmill.airpuff(obj.airpuffDuration);
+                Tools.tone(obj.errorTone(1), obj.errorTone(2)); %incorrect
+                 
+                %pause(2)
                 obj.blank(obj.intertrialDuration+2);
                 pause(1)
-                obj.treadmill.airpuff(obj.airpuffDuration);
+                
                 obj.choiceArray(obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),2) = 0; %incorrect side chosen
             end
             obj.trial = obj.trial + 1;
@@ -705,7 +709,7 @@ classdef LinearMaze < handle
                 if obj.trial >  obj.stage2GainInterval & obj.gain > 1.5 & last10TrialsRatio <= 0.5
                      obj.gain = obj.gain-.5
                      obj.stage2GainInterval =obj.stage2GainInterval +10;
-                elseif obj.trial >  obj.stage2GainInterval & obj.gain > 1.5 & last10TrialsRatio > 0.5
+                %elseif obj.trial >  obj.stage2GainInterval & obj.gain > 1.5 & last10TrialsRatio > 0.5
 %                     obj.gain = obj.gain+.5
 %                     obj.stage2GainInterval =obj.stage2GainInterval +10;
                 end
@@ -747,15 +751,18 @@ classdef LinearMaze < handle
         end
         
         function stage3_setStim(obj)
-         %if correct the first time. Random grating side
-         %if incorrect first time. grating on the same side
-         %initially turn off all stimulus. turn off thin
-        
-         
-         if obj.stage3Array(1) %correct
-             %random side
-             rnd = rand();
-             if rnd>.5 %left
+            right = 155;
+            left = 35;
+            
+            if obj.stage3Array(3) == right %right
+                side = 'right';
+            else
+                side = 'left';
+            end
+            
+             mode = mod(obj.trial,5); %if 0 same side, if ~0 switch side
+             
+             if strcmp(side,'left') & mode == 0 || strcmp(side,'right') & mode ~= 0
                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
                  obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
                  
@@ -764,9 +771,9 @@ classdef LinearMaze < handle
                  
                  
                  
-                 obj.stage3Array(3:4) = [135,45];
+                 obj.stage3Array(3:4) = [right,left];
              else %right
-                 obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+                obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
                 
                 obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
@@ -774,14 +781,50 @@ classdef LinearMaze < handle
                     
                
                 
-                obj.stage3Array(3:4) = [45,135];
+                obj.stage3Array(3:4) = [left,right];
              end
-         else %incorrect
-             %same side
-             
-         end
             
         end
+%         function stage3_setStim(obj)  
+%         %this function will randomly place
+%         stim on either side if chosen correctly and keep stim on same
+%         side if chosen incorrectly.
+
+%          %if correct the first time. Random grating side
+%          %if incorrect first time. grating on the same side
+%          %initially turn off all stimulus. turn off thin
+%         
+%          
+%          if obj.stage3Array(1) %correct
+%              %random side
+%              rnd = rand();
+%              if rnd>.5 %left
+%                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+%                  obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+%                  
+%                  obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
+%                  obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
+%                  
+%                  
+%                  
+%                  obj.stage3Array(3:4) = [165,15];
+%              else %right
+%                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+%                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+%                 
+%                 obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+%                 obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+%                     
+%                
+%                 
+%                 obj.stage3Array(3:4) = [15,165];
+%              end
+%          else %incorrect
+%              %same side
+%              
+%          end
+%             
+%         end
         
         %% these functions are for the GUI
         
@@ -1005,6 +1048,28 @@ classdef LinearMaze < handle
                trial = [trial trial_];
                
                save test accuracy time trial
+               
+           end
+           
+           if strcmp(name, 'a1')
+               
+               load a1
+               time = [time time_];
+               accuracy = [accuracy accuracy_];
+               trial = [trial trial_];
+               
+               save a1 accuracy time trial
+               
+           end
+           
+           if strcmp(name, 'a2')
+               
+               load a2
+               time = [time time_];
+               accuracy = [accuracy accuracy_];
+               trial = [trial trial_];
+               
+               save a2 accuracy time trial
                
            end
             
