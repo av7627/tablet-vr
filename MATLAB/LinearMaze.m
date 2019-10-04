@@ -87,7 +87,9 @@ classdef LinearMaze < handle
         % treadmill - Arduino controlled apparatus.
         treadmill
         
-
+        timeout = 30; %seconds until the stage3 trial is auto timedout
+        
+        stage3BlockArray = [];
     end
     
     properties (SetAccess = private)
@@ -496,6 +498,9 @@ classdef LinearMaze < handle
                 case 'stage2'
                     obj.sender.send('enable,Blank,1;', obj.addresses);
                 case 'stage3'
+                    
+                    obj.scheduler.repeat(@obj.stage3Timer,1);
+                    
                     obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,0;', obj.addresses);
                     
                     obj.sender.send('enable,Branch1LeftGratingThin,0;', obj.addresses);
@@ -527,6 +532,7 @@ classdef LinearMaze < handle
                     %move all stimuli to desired angle from midline
                     Midangle = 90
                     obj.moveStimAngle(Midangle)
+                    
                     
                 otherwise
                     obj.sender.send('enable,CombinedMesh-MeshBaker-MeshBaker-mesh,1;', obj.addresses);
@@ -618,12 +624,23 @@ classdef LinearMaze < handle
 
         end
         
+        function stage3Timer(obj)
+            if toc(obj.startTime) > obj.timeout && obj.enabled %30 seconds passed
+               %end trial with error 
+                obj.errorStage3() %error 
+                
+            elseif ~obj.enabled 
+                obj.timeout = toc(obj.startTime)+30;%error side
+                
+            end
+        end
         function stage3(obj,step) 
             %take input from encoder and rotate camera in front of the
             %decision point. if it exceeds error angle, play error tone. if
             %it exceeds correct side, give water, reset trial.
             if obj.enabled
                
+                
                 
                 
                 
@@ -640,23 +657,21 @@ classdef LinearMaze < handle
                         'rotation,Main Camera,0,%.2f,0;'], obj.yRotation-90 + obj.offsets), ...
                         obj.addresses);
                     
-                if obj.yRotation == obj.stage3Array(3) && obj.stage3Array(1)%error side
-                    %play error tone
-                   
+%                 disp(toc(obj.startTime))
+%                 disp(obj.timeout)
                     
-                    obj.stage3Record = obj.stage3Record + 1; %keep record of errors for log file
-                    obj.Stage3RecordList(obj.trial) = 0;%error
-                    %disp(obj.Stage3RecordList)
-                    
-                    obj.stage3Array(1) = 0;
-                    %obj.blank(obj.intertrialDuration);
-                    obj.stage3_newTrial()
+                if obj.yRotation == obj.stage3Array(3) && obj.stage3Array(1) 
+                    obj.errorStage3() %error side chosen
                 elseif obj.yRotation == obj.stage3Array(4) %correct side chosen
+                    obj.timeout = toc(obj.startTime)+30;
                     obj.Stage3RecordList(obj.trial) = 1;
                     obj.stage3_newTrial()
                     
+                    obj.stage3BlockArray(length(obj.stage3BlockArray)+1)= 1;
+                    disp(obj.stage3BlockArray)
                 end
             end
+       
             
              if obj.logOnUpdate
                      str = sprintf('data,%i,%i,%i,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f, %i,%i,%i,%i', obj.trial+obj.trialNumberFactor*height(obj.csvDataTable),obj.treadmill.frame, obj.treadmill.step, obj.nodes.distance, obj.nodes.yaw, obj.nodes.position(1), obj.nodes.position(2),obj.vectorPosition(1),obj.vectorPosition(2),obj.speed,obj.steeringPushfactor ,obj.currentBranch,obj.gain);
@@ -669,7 +684,21 @@ classdef LinearMaze < handle
       
              
         end
-   
+        function errorStage3(obj)
+            
+                    obj.timeout = toc(obj.startTime)+30;%error side
+                    %play error tone
+                   
+                    
+                    obj.stage3Record = obj.stage3Record + 1; %keep record of errors for log file
+                    obj.Stage3RecordList(obj.trial) = 0;%error
+                    %disp(obj.Stage3RecordList)
+                    
+                    obj.stage3Array(1) = 0;
+                    %obj.blank(obj.intertrialDuration);
+                    obj.stage3_newTrial()
+            
+        end
        
         function stage3_newTrial(obj)
          
@@ -760,7 +789,13 @@ classdef LinearMaze < handle
                 side = 'left';
             end
             
-             mode = mod(obj.trial,5); %if 0 same side, if ~0 switch side
+            %disp(sum(obj.stage3BlockArray))
+            if sum(obj.stage3BlockArray) == 4
+              mode = 0; %if 0 same side, if ~0 switch side
+              obj.stage3BlockArray = [];
+            else
+              mode = 1;
+            end
              
              if strcmp(side,'left') & mode == 0 || strcmp(side,'right') & mode ~= 0
                  obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
@@ -959,7 +994,13 @@ classdef LinearMaze < handle
                     
                     % Hide blank and enable external devices and behavior.
                     obj.sender.send('enable,Blank,0;', obj.addresses);
+           
+               
            end
+           if strcmp(obj.stage, 'stage3')
+               obj.timeout = toc(obj.startTime)+30;%error side
+           end
+               
                     obj.stopDuringBlank = false;
                     
                     % Send a high pulse to trigger-out.
