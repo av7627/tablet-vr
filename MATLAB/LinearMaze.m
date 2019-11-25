@@ -66,7 +66,7 @@ classdef LinearMaze < handle
         logOnUpdate = true;
 		
         % rewardDuration - Duration (s) the reward valve remains open after a trigger.
-        rewardDuration =0.1%15;
+        rewardDuration =0.1*3/4;%15;
         
         airpuffDuration = 0.05;
         
@@ -439,6 +439,8 @@ classdef LinearMaze < handle
             end
             %obj.treadmill.register('Tape', @obj.onTape);
             obj.treadmill.register('touchPad', @obj.touchPad);
+            
+            obj.treadmill.register('laserPin', @obj.laserPin);
                        
 
             obj.straightDist = obj.vertices(:, 4)- obj.vertices(:,2 );
@@ -515,7 +517,7 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch2LeftGratingThick,0;', obj.addresses);
                     obj.sender.send('enable,Branch2RightGratingThick,0;', obj.addresses);
                     obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
-                    obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThick,1;', obj.addresses);
                     %turn off all gray cylinders
                     obj.sender.send('enable,Branch1LeftGray,0;', obj.addresses);
                     obj.sender.send('enable,Branch1RightGray,0;', obj.addresses);
@@ -525,7 +527,10 @@ classdef LinearMaze < handle
                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
                     %turn of stage3 Stim
                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
-                    obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
+                    
+                    obj.sender.send('enable,Branch3LeftGratingHighFreq,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingHighFreq,0;', obj.addresses);
                     
                      
                     
@@ -550,17 +555,52 @@ classdef LinearMaze < handle
             y = r*cosd(angle) -30;
          
             
-            obj.sender.send(Tools.compose([sprintf(...
-                        'position,Branch3Right_stage3,%.2f,6,%.2f;', x,y), ...
-                        'rotation,Branch3Right_stage3,90,%.2f,0;'], angle ), ...
-                        obj.addresses);
-        
-            x = -r*sind(angle) +467;
-            
-            obj.sender.send(Tools.compose([sprintf(...
-                        'position,Branch3Left_stage3,%.2f,6,%.2f;', x,y), ...
-                        'rotation,Branch3Left_stage3,90,%.2f,0;'], -angle ), ...
-                        obj.addresses);
+%             obj.sender.send(Tools.compose([sprintf(...
+%                         'position,Branch3Right_stage3,%.2f,6,%.2f;', x,y), ...
+%                         'rotation,Branch3Right_stage3,90,%.2f,0;'], angle ), ...
+%                         obj.addresses);
+%         
+%             x = -r*sind(angle) +467;
+%             
+%             obj.sender.send(Tools.compose([sprintf(...
+%                         'position,Branch3Left_stage3,%.2f,6,%.2f;', x,y), ...
+%                         'rotation,Branch3Left_stage3,90,%.2f,0;'], -angle ), ...
+%                         obj.addresses);
+
+%this is for setting gratings stim thick instead of blinking stim
+                obj.sender.send(Tools.compose([sprintf(...
+                    'position,Branch3RightGratingThick,%.2f,6,%.2f;', x,y), ...
+                    'rotation,Branch3RightGratingThick,90,%.2f,0;'], angle ), ...
+                    obj.addresses);
+                
+                obj.sender.send(Tools.compose([sprintf(...
+                    'position,Branch3RightGray,%.2f,6,%.2f;', x,y), ...
+                    'rotation,Branch3RightGray,90,%.2f,0;'], angle ), ...
+                    obj.addresses);
+
+                obj.sender.send(Tools.compose([sprintf(...
+                    'position,Branch3RightGratingHighFreq,%.2f,6,%.2f;', x,y), ...
+                    'rotation,Branch3RightGratingHighFreq,90,%.2f,0;'], angle ), ...
+                    obj.addresses);
+                
+                x = -r*sind(angle) +467;
+
+                obj.sender.send(Tools.compose([sprintf(...
+                    'position,Branch3LeftGratingThick,%.2f,6,%.2f;', x,y), ...
+                    'rotation,Branch3LeftGratingThick,90,%.2f,0;'], -angle ), ...
+                    obj.addresses);
+                
+                obj.sender.send(Tools.compose([sprintf(...
+                    'position,Branch3LeftGray,%.2f,6,%.2f;', x,y), ...
+                    'rotation,Branch3LeftGray,90,%.2f,0;'], -angle ), ...
+                    obj.addresses);
+                
+                obj.sender.send(Tools.compose([sprintf(...
+                    'position,Branch3LeftGratingHighFreq,%.2f,6,%.2f;', x,y), ...
+                    'rotation,Branch3LeftGratingHighFreq,90,%.2f,0;'], -angle ), ...
+                    obj.addresses);
+                
+                
                         
         end
         
@@ -726,7 +766,15 @@ classdef LinearMaze < handle
             obj.newGUI_figurehandle.trialNumberLabel.Text = num2str(obj.trial);
             
             obj.MouseGraph(); %update the mouseGraph in GUI
-            obj.log_trial('trial: %i. errors so far: %i. error/trial = %f', obj.trial, obj.stage3Record,obj.stage3Record/obj.trial);
+            
+            right = 35;
+            if obj.stage3Array(3) == right %right
+                side = 'right';
+            else
+                side = 'left';
+            end
+            
+            obj.log_trial('trial: %i. errors so far: %i. error/trial = %f. side: %s', obj.trial, obj.stage3Record,obj.stage3Record/obj.trial,side);
             
             try
                obj.Stage3RecordList(end-10:end)
@@ -764,9 +812,15 @@ classdef LinearMaze < handle
             obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
             obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
             
+            obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+            obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
             
+            obj.sender.send('enable,Branch3RightGratingHighFreq,0;', obj.addresses);
+            obj.sender.send('enable,Branch3LeftGratingHighFreq,0;', obj.addresses);
+       % obj.sender.send('enable,Floor,1;', obj.addresses);
+        
            
-           
+            
             obj.stage3_setStim()
             obj.stage3Array(1) = 1;
             
@@ -788,37 +842,78 @@ classdef LinearMaze < handle
             else
                 side = 'left';
             end
-            
-            %disp(sum(obj.stage3BlockArray))
-            if sum(obj.stage3BlockArray) == 4
-              mode = 0; %if 0 same side, if ~0 switch side
-              obj.stage3BlockArray = [];
-            else
-              mode = 1;
+            if 1 %random stimulus
+                
+                if rand<.5%left
+%                      obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+%                      obj.sender.send('enable,Branch3RightGray,1;', obj.addresses);
+
+%                     obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
+%                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+                     obj.sender.send('enable,Branch3LeftGratingHighFreq,0;', obj.addresses);
+                     obj.sender.send('enable,Branch3RightGratingHighFreq,1;', obj.addresses);
+
+
+
+%                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGratingThick,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
+
+
+                     obj.stage3Array(3:4) = [right,left];
+                 else %right
+%                     obj.sender.send('enable,Branch3LeftGray,1;', obj.addresses);
+%                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+                     obj.sender.send('enable,Branch3LeftGratingHighFreq,1;', obj.addresses);
+                     obj.sender.send('enable,Branch3RightGratingHighFreq,0;', obj.addresses);
+
+
+
+%                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThick,1;', obj.addresses);
+
+
+
+                    obj.stage3Array(3:4) = [left,right];
+                 end
+                
+                
+                
+            elseif 0%blocks method stimulus
+                %disp(sum(obj.stage3BlockArray))
+                if sum(obj.stage3BlockArray) == 4
+                  mode = 0; %if 0 same side, if ~0 switch side
+                  obj.stage3BlockArray = [];
+                else
+                  mode = 1;
+                end
+
+                 if strcmp(side,'left') & mode == 0 || strcmp(side,'right') & mode ~= 0
+                     obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+
+                     obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
+                     obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
+
+
+
+                     obj.stage3Array(3:4) = [right,left];
+                 else %right
+                    obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+
+                    obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+
+
+
+                    obj.stage3Array(3:4) = [left,right];
+                 end
             end
-             
-             if strcmp(side,'left') & mode == 0 || strcmp(side,'right') & mode ~= 0
-                 obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-                 obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
-                 
-                 obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
-                 obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
-                 
-                 
-                 
-                 obj.stage3Array(3:4) = [right,left];
-             else %right
-                obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-                obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
-                
-                obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
-                obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
-                    
-               
-                
-                obj.stage3Array(3:4) = [left,right];
-             end
-            
+
         end
 %         function stage3_setStim(obj)  
 %         %this function will randomly place
@@ -1544,6 +1639,11 @@ classdef LinearMaze < handle
 %                 end
         end
         
+        function laserPin(obj, data)
+            %make a log of the vysinc signal coming from laser
+            obj.log('laser vysinc');
+            disp('laser')
+        end
         
         
         function touchPad(obj,data)             

@@ -67,6 +67,9 @@ classdef ArduinoTreadmill < Event
         % triggerPin - Trigger-out pin to initiate external devices.
         triggerPin = 22
         
+        %laser vysinc
+        laserPin = 8;
+        
         % triggerState - Binary state of the triggerPin.
         triggerState = false
         
@@ -134,6 +137,7 @@ classdef ArduinoTreadmill < Event
                 obj.bridge.getRotation(obj.encoderPins, 1);
                 obj.bridge.getBinary(obj.tapePin, 0, 0, 1);
                 obj.bridge.getBinary(obj.touchPadPin,5, 0, 1);
+                obj.bridge.getBinary(obj.laserPin,5, 0, 1);
                 %obj.bridge.register('touchPad', @fcn)
             end
         end
@@ -167,6 +171,8 @@ classdef ArduinoTreadmill < Event
                 case obj.touchPadPin %touchPad
                     
                     obj.invoke('touchPad',data);
+                case obj.laserPin
+                    obj.invoke('laserPin',data);
             end
         end
     end
