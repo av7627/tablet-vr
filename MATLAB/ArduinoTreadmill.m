@@ -53,7 +53,7 @@ classdef ArduinoTreadmill < Event
         framePin = 14
         
         % rewardPin - Arduino pin where a reward may be triggered.
-        rewardPin = 12
+        rewardPin = 13
         
         % tapePin - Pin for IR sensing reflective tapes.
         tapePin = 15
@@ -92,12 +92,16 @@ classdef ArduinoTreadmill < Event
             
             % Forward step depends on the encoder specs and wheel radius.
             obj.delta = 2 * pi / obj.encoderSteps * obj.wheelRadius;
+            
+            %obj.bridge.setPulse(obj.rewardPin, 0, 0, round(duration * 1e6), 1);
         end
         
         function delete(obj)
             % Treadmill.delete
             % Release resources.
             
+            %make sure solenoid is closed
+             %obj.bridge.setPulse(obj.rewardPin, 1, 0, round(duration * 1e6), 1); %pin, stateStart, durationLow, durationHigh, repetitions
             delete(obj.bridge);
         end
         

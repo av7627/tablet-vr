@@ -545,7 +545,7 @@ classdef LinearMaze < handle
             end
             
             
-
+                
         end
         
         function moveStimAngle(obj, angle)
@@ -842,7 +842,7 @@ classdef LinearMaze < handle
             else
                 side = 'left';
             end
-            if 1 %random stimulus
+            if 0 %random stimulus
                 
                 if rand<.5%left
 %                      obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
@@ -882,7 +882,7 @@ classdef LinearMaze < handle
                 
                 
                 
-            elseif 0%blocks method stimulus
+            elseif 1%blocks method stimulus
                 %disp(sum(obj.stage3BlockArray))
                 if sum(obj.stage3BlockArray) == 4
                   mode = 0; %if 0 same side, if ~0 switch side
@@ -892,23 +892,41 @@ classdef LinearMaze < handle
                 end
 
                  if strcmp(side,'left') & mode == 0 || strcmp(side,'right') & mode ~= 0
-                     obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+%                      obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+%                      obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+% 
+%                      obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
+%                      obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
 
-                     obj.sender.send('enable,Branch3Left_stage3,1;', obj.addresses);
-                     obj.sender.send('enable,Branch3Right_stage3,0;', obj.addresses);
+
+                     obj.sender.send('enable,Branch3LeftGratingHighFreq,0;', obj.addresses);
+                     obj.sender.send('enable,Branch3RightGratingHighFreq,1;', obj.addresses);
 
 
+
+%                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGratingThick,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThick,0;', obj.addresses);
 
                      obj.stage3Array(3:4) = [right,left];
                  else %right
-                    obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
-                    obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3LeftGray,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3RightGray,0;', obj.addresses);
+% 
+%                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
 
-                    obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
-                    obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+
+                    obj.sender.send('enable,Branch3LeftGratingHighFreq,1;', obj.addresses);
+                     obj.sender.send('enable,Branch3RightGratingHighFreq,0;', obj.addresses);
 
 
+
+%                     obj.sender.send('enable,Branch3Left_stage3,0;', obj.addresses);
+%                     obj.sender.send('enable,Branch3Right_stage3,1;', obj.addresses);
+                    obj.sender.send('enable,Branch3LeftGratingThick,0;', obj.addresses);
+                    obj.sender.send('enable,Branch3RightGratingThick,1;', obj.addresses);
 
                     obj.stage3Array(3:4) = [left,right];
                  end
@@ -1152,6 +1170,7 @@ classdef LinearMaze < handle
         function delete(obj)
             % LinearMaze.delete()
             % Release all resources.
+           % obj.treadmill.reward(obj.rewardDuration);
             obj.sender.send('enable,Blank,1;', obj.addresses);
             obj.treadmill.trigger = false;
             delete(obj.treadmill);
